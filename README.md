@@ -2,116 +2,128 @@
 
 Multi-language client SDK for [RobustMQ](https://github.com/robustmq/robustmq) — a unified messaging engine built for the AI era.
 
-RobustMQ is a single-binary broker that natively supports MQTT, Kafka, NATS, AMQP, and **mq9** on a shared storage layer. One message written once, consumable by any protocol.
+RobustMQ is a single-binary broker that natively supports MQTT, Kafka, NATS, AMQP, and **mq9** on a shared storage layer.
 
 ---
 
-## Repository structure
+## mq9: AI Agent mailbox protocol
 
-```text
-robustmq-sdk/
-├── docs/
-│   └── mq9-protocol.md     # Protocol specification
-├── python/                  # ✅ Implemented — AI/Agent ecosystem (LangChain, AutoGen)
-├── rust/                    # 🚧 Scaffolded — reference implementation
-├── go/                      # 🚧 Scaffolded — cloud-native infrastructure
-├── javascript/              # 🚧 Scaffolded — Node.js + frontend agents
-├── java/                    # 🚧 Scaffolded — enterprise, Kafka ecosystem
-└── csharp/                  # 🚧 Scaffolded — enterprise, Microsoft ecosystem
-```
+mq9 gives every agent a durable mailbox. Messages persist until TTL expires — senders and receivers do not need to be online simultaneously.
 
----
+| Concept | Description |
+|---------|-------------|
+| **Mailbox** | Agent's address. Private (UUID) or public (user-defined name). TTL-driven, auto-cleaned. |
+| **Priority** | `high` / `normal` / `low`. Cross-priority ordering guaranteed by storage. |
+| **Store-first** | Subscriber gets all non-expired messages on connect, then real-time going forward. |
+| **Queue group** | Multiple subscribers sharing a group receive each message exactly once. |
 
-## Protocol coverage
-
-### mq9: AI Agent mailbox protocol
-
-mq9 solves a fundamental problem in multi-agent systems: when Agent A sends a message to Agent B and B is offline, the message is gone. mq9 gives every agent a durable mailbox.
-
-**Core concepts:**
-
-- **Mailbox (`mail_id`)** — an agent's communication address, TTL-driven, auto-cleaned
-  - Private: system-generated UUID (not guessable, security boundary)
-  - Public: user-defined name (e.g. `task.queue`, `analytics.result`)
-- **Priority** — `high` / `normal` / `low`; cross-priority ordering guaranteed by storage layer
-- **Store-first delivery** — messages persist until TTL expires; subscriber gets all non-expired + future messages on connect
-
-**Protocol operations (NATS subject-based):**
+**Protocol operations:**
 
 | Operation | Subject |
-| --------- | ------- |
+|-----------|---------|
 | Create mailbox | `$mq9.AI.MAILBOX.CREATE` |
 | Send message | `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}` |
-| Subscribe (all priorities) | `$mq9.AI.MAILBOX.MSG.{mail_id}.*` |
-| List messages | `$mq9.AI.MAILBOX.LIST.{mail_id}` |
+| Subscribe | `$mq9.AI.MAILBOX.MSG.{mail_id}.*` |
+| List metadata | `$mq9.AI.MAILBOX.LIST.{mail_id}` |
 | Delete message | `$mq9.AI.MAILBOX.DELETE.{mail_id}.{msg_id}` |
-| Discover public mailboxes | `$mq9.AI.PUBLIC.LIST` |
 
-See [docs/mq9-protocol.md](docs/mq9-protocol.md) for the full protocol specification.
-
-mq9 runs on the NATS text protocol — any NATS client connects directly. The SDKs here provide idiomatic wrappers with mq9-specific semantics.
-
-### MQTT
-
-Full MQTT 3.1 / 3.1.1 / 5.0 support. Features include QoS 0/1/2, shared subscriptions, session persistence, offline messages, retained messages, delayed publishing, exclusive subscriptions, and will messages. MQTT SDKs are planned after mq9 stabilizes.
+Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 
 ---
 
-## Quick start — Python
+## SDK status
+
+| Language | Package | Status |
+|----------|---------|--------|
+| Python | `robustmq.mq9` | ✅ Implemented |
+| Go | `mq9` | ✅ Implemented |
+| JavaScript | `@robustmq/mq9` | ✅ Implemented |
+| Java | `io.robustmq.mq9` | ✅ Implemented |
+| C# | `RobustMQ.Mq9` | ✅ Implemented |
+| Rust | `robustmq::mq9` | ✅ Implemented |
+
+---
+
+## Quick start
+
+```python
+# Python
+from robustmq.mq9 import Client, Priority
+
+async with Client("nats://localhost:4222") as client:
+    mailbox = await client.create(ttl=3600)
+    await client.send(mailbox.mail_id, b"hello", priority=Priority.NORMAL)
+
+    async def handler(msg):
+        print(msg.payload)
+
+    await client.subscribe(mailbox.mail_id, handler)
+```
+
+See language-specific docs below for all SDKs.
+
+---
+
+## SDK documentation
+
+| Language | Docs | Demo |
+|----------|------|------|
+| Python | [docs/python.md](docs/python.md) | [demo/demo.py](demo/demo.py) |
+| Go | [docs/go.md](docs/go.md) | [demo/demo.go](demo/demo.go) |
+| JavaScript | [docs/javascript.md](docs/javascript.md) | [demo/demo.ts](demo/demo.ts) |
+| Java | [docs/java.md](docs/java.md) | [demo/Demo.java](demo/Demo.java) |
+| C# | [docs/csharp.md](docs/csharp.md) | [demo/demo.cs](demo/demo.cs) |
+| Rust | [docs/rust.md](docs/rust.md) | [demo/demo.rs](demo/demo.rs) |
+
+---
+
+## Running the demo
+
+Each demo script connects to `nats://localhost:4222` and runs the same scenario:
+1. Create a private mailbox (TTL 60s)
+2. Send 3 messages (high / normal / low priority)
+3. Subscribe and print received messages
+4. List mailbox metadata, delete one message
+5. Create a public mailbox
 
 ```bash
-pip install robustmq
+# Python
+cd python && pip install -e .
+python ../demo/demo.py
+
+# Go
+cd go && go run ../demo/demo.go
+
+# JavaScript
+cd javascript && npm install && npx ts-node ../demo/demo.ts
+
+# Java
+cd java && mvn compile
+mvn exec:java -Dexec.mainClass=Demo
+
+# Rust
+cp demo/demo.rs rust/examples/demo.rs
+cd rust && cargo run --example demo
+
+# C#
+cd csharp && dotnet run --project Demo
 ```
-
-```python
-import asyncio
-from robustmq.mq9 import Client, Message
-
-async def main():
-    async with Client(server="nats://localhost:4222") as client:
-        # Create a private mailbox (TTL 1 hour)
-        mailbox = await client.create(ttl=3600)
-
-        # Send a message
-        await client.send(mailbox.mail_id, {"task": "summarize", "doc": "abc"})
-
-        # Receive messages
-        async def handler(msg: Message) -> None:
-            print(f"[{msg.priority}] {msg.payload}")
-            await client.delete(msg.mail_id, msg.msg_id)
-
-        sub = await client.subscribe(mailbox.mail_id, handler)
-        await asyncio.sleep(5)
-        await sub.unsubscribe()
-
-asyncio.run(main())
-```
-
-**Worker pool (competitive consumption):**
-
-```python
-async with Client() as client:
-    async def worker(msg: Message) -> None:
-        print(f"Worker got: {msg.payload}")
-
-    # Each message delivered to exactly one worker
-    await client.subscribe("task.queue", worker, queue_group="workers")
-    await asyncio.Future()
-```
-
-See [python/README.md](python/README.md) for the full Python SDK reference.
 
 ---
 
-## Why these SDKs exist
+## Repository layout
 
-Although mq9 runs over NATS (any NATS client works), idiomatic SDK wrappers provide:
-
-1. **mq9-native API** — `client.create()`, `client.send()`, `client.subscribe()` instead of raw subject construction
-2. **Priority routing** — abstracts the `high`/`normal`/`low` subject encoding
-3. **Queue group consumer** — simplifies competitive consumption setup
-4. **LangChain / AutoGen integration** — mq9 as a native tool or memory backend for AI agents
-5. **Type safety** — typed message payloads and structured responses
+```
+python/          # Python SDK
+go/              # Go SDK
+javascript/      # JavaScript/TypeScript SDK
+java/            # Java SDK
+csharp/          # C# SDK
+rust/            # Rust SDK
+docs/            # SDK docs + protocol spec
+demo/            # End-to-end demo scripts (one per language)
+VERSION          # Canonical version (currently 1.0.0)
+```
 
 ---
 
