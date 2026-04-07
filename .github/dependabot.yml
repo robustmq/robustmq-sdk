@@ -1,0 +1,70 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+
+  # Python
+  - package-ecosystem: pip
+    directory: /python
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      python-deps:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(python)"
+
+  # Rust
+  - package-ecosystem: cargo
+    directory: /rust
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      rust-minor-patch:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "deps(rust)"
+
+  # JavaScript
+  - package-ecosystem: npm
+    directory: /javascript
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      js-deps:
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(javascript)"
+
+  # Java
+  - package-ecosystem: maven
+    directory: /java
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(java)"
+
+  # Go
+  - package-ecosystem: gomod
+    directory: /go
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps(go)"

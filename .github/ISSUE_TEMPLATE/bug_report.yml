@@ -1,0 +1,61 @@
+name: Bug Report
+description: Report a bug in the SDK
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check existing issues before submitting. Fill in as much detail as possible.
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: SDK Language
+      options:
+        - Python
+        - Rust
+        - Go
+        - JavaScript
+        - Java
+        - C#
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SDK Version
+      placeholder: "e.g. 1.0.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Stack Trace
+      render: shell
+
+  - type: checkboxes
+    id: pr
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to submit a PR to fix this

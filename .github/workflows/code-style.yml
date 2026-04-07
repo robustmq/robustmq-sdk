@@ -1,0 +1,115 @@
+name: Code Style
+
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python (ruff)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Check formatting
+        run: ruff format --check python/
+      - name: Lint
+        run: ruff check python/
+
+  rust:
+    name: Rust (fmt + clippy)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          cache-on-failure: true
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        working-directory: rust
+        run: cargo clippy --all-targets -- -D warnings
+
+  go:
+    name: Go (gofmt + vet)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: go/go.sum
+      - name: Check formatting
+        working-directory: go
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        working-directory: go
+        run: go vet ./...
+
+  javascript:
+    name: JavaScript (eslint + prettier)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm ci
+      - name: Check formatting
+        working-directory: javascript
+        run: npx prettier --check "src/**/*.ts"
+      - name: Lint
+        working-directory: javascript
+        run: npx eslint "src/**/*.ts"
+      - name: Type check
+        working-directory: javascript
+        run: npx tsc --noEmit
+
+  java:
+    name: Java (checkstyle)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+      - name: Checkstyle
+        working-directory: java
+        run: mvn checkstyle:check -q
+
+  csharp:
+    name: C# (dotnet format)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0"
+      - name: Format check
+        working-directory: csharp
+        run: dotnet format --verify-no-changes

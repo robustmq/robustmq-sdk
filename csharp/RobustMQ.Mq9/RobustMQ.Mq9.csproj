@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RobustMQ.Mq9</RootNamespace>
+    <AssemblyName>RobustMQ.Mq9</AssemblyName>
+    <Version>1.0.0</Version>
+    <Description>RobustMQ C# SDK — mq9 AI-native async messaging</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NATS.Net" Version="2.*" />
+  </ItemGroup>
+
+</Project>

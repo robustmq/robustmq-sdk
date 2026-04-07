@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/robustmq/robustmq-sdk/blob/main/docs/mq9-protocol.md
+    about: Read the mq9 protocol specification
+  - name: RobustMQ Broker
+    url: https://github.com/robustmq/robustmq
+    about: Issues with the broker itself belong here

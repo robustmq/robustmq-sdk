@@ -1,0 +1,230 @@
+name: Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  # ── Step 1: validate version, create git tag + GitHub Release ──────────────
+  prepare:
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.title, 'release:')
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Releasing ${VERSION}"
+
+      - name: Verify all build files match VERSION
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          check() {
+            local lang=$1 file=$2 pattern=$3
+            if ! grep -q "${pattern}" "${file}"; then
+              echo "ERROR: ${lang} version in ${file} does not match VERSION (${VERSION})"
+              exit 1
+            fi
+          }
+          check "Python"     "python/pyproject.toml"                     "version = \"${VERSION}\""
+          check "Rust"       "rust/Cargo.toml"                           "version = \"${VERSION}\""
+          check "JavaScript" "javascript/package.json"                   "\"version\": \"${VERSION}\""
+          check "Java"       "java/pom.xml"                              "<version>${VERSION}</version>"
+          check "C#"         "csharp/RobustMQ.Mq9/RobustMQ.Mq9.csproj" "<Version>${VERSION}</Version>"
+          echo "All build files verified: ${VERSION}"
+
+      - name: Create and push git tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "ERROR: tag ${TAG} already exists"
+            exit 1
+          fi
+          git tag "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
+          echo "Pushed tag ${TAG}"
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          generateReleaseNotes: true
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Step 2: publish all 6 SDKs in parallel ─────────────────────────────────
+
+  release-python:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: pip install build twine
+      - name: Build
+        working-directory: python
+        run: python -m build
+      - name: Publish to PyPI
+        working-directory: python
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*
+
+  release-rust:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Publish to crates.io
+        working-directory: rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish
+
+  release-go:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.tag }}
+      - name: Push Go module tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "go/v${VERSION}" -m "Go SDK v${VERSION}"
+          git push origin "go/v${VERSION}"
+
+  release-javascript:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm ci
+      - name: Build
+        working-directory: javascript
+        run: npm run build
+      - name: Publish to npm
+        working-directory: javascript
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+  release-java:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Publish to Maven Central
+        working-directory: java
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn --no-transfer-progress deploy -P release
+
+  release-csharp:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0"
+      - name: Build
+        working-directory: csharp/RobustMQ.Mq9
+        run: dotnet build -c Release
+      - name: Pack
+        working-directory: csharp/RobustMQ.Mq9
+        run: dotnet pack -c Release --no-build -o ../nupkg
+      - name: Publish to NuGet
+        working-directory: csharp
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push nupkg/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+
+  # ── Step 3: summary ─────────────────────────────────────────────────────────
+  summary:
+    needs: [prepare, release-python, release-rust, release-go, release-javascript, release-java, release-csharp]
+    runs-on: ubuntu-22.04
+    if: always()
+    steps:
+      - name: Release summary
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Release v${VERSION}
+
+          | SDK | Registry | Status |
+          |-----|----------|--------|
+          | Python | PyPI | ${{ needs.release-python.result }} |
+          | Rust | crates.io | ${{ needs.release-rust.result }} |
+          | Go | pkg.go.dev | ${{ needs.release-go.result }} |
+          | JavaScript | npm | ${{ needs.release-javascript.result }} |
+          | Java | Maven Central | ${{ needs.release-java.result }} |
+          | C# | NuGet | ${{ needs.release-csharp.result }} |
+
+          GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${VERSION}
+          EOF

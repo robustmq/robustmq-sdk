@@ -1,0 +1,42 @@
+name: Feature Request
+description: Request a new feature or API change
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Affected Language(s)
+      multiple: true
+      options:
+        - All
+        - Python
+        - Rust
+        - Go
+        - JavaScript
+        - Java
+        - C#
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or Behavior
+      description: Show a code example if possible
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: pr
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to submit a PR to implement this

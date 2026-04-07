@@ -1,0 +1,11 @@
+{
+  "CHECKS": {
+    "regexp": "^(release|feat|deps|fix|test|refactor|chore|style|docs|perf|build|ci|revert)(\\(.*\\))?\\!?:.*",
+    "regexpFlags": null,
+    "ignoreLabels": ["ignore-title"]
+  },
+  "LABEL": {
+    "name": "Invalid PR Title",
+    "color": "cc0000"
+  }
+}
