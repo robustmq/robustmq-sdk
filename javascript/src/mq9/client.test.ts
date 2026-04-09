@@ -2,7 +2,6 @@ import {
   MQ9Client,
   MQ9Error,
   NatsTransport,
-  Mq9Message,
   MessageMeta,
   Priority,
 } from "./client.js";

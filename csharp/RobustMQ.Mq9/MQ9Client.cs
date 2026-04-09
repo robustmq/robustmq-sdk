@@ -213,20 +213,19 @@ public class MQ9Client : IAsyncDisposable
 
 file sealed class SubscriptionHandle : IAsyncDisposable
 {
-    private readonly IDisposable _sub;
+    private readonly IAsyncDisposable _sub;
     private readonly CancellationTokenSource _cts;
 
-    public SubscriptionHandle(IDisposable sub, CancellationTokenSource cts)
+    public SubscriptionHandle(IAsyncDisposable sub, CancellationTokenSource cts)
     {
         _sub = sub;
         _cts = cts;
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _cts.Cancel();
-        _sub.Dispose();
+        await _sub.DisposeAsync();
         _cts.Dispose();
-        return ValueTask.CompletedTask;
     }
 }

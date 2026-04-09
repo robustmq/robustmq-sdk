@@ -108,7 +108,7 @@ pub struct Message {
 }
 
 /// A raw incoming message from the transport (subject + payload bytes).
-pub(crate) struct RawMsg {
+pub struct RawMsg {
     pub subject: String,
     pub payload: Bytes,
 }
@@ -400,7 +400,7 @@ impl MQ9Client {
         let resp = self.do_request(&subject, &serde_json::json!({})).await?;
         let metas = resp["messages"]
             .as_array()
-            .map(|arr| arr.iter().filter_map(|v| parse_message_meta(v)).collect())
+            .map(|arr| arr.iter().filter_map(parse_message_meta).collect())
             .unwrap_or_default();
         Ok(metas)
     }

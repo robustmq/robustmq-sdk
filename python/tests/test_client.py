@@ -50,7 +50,9 @@ async def _inject_nc(client: Client) -> AsyncMock:
 @pytest.mark.asyncio
 async def test_connect_and_close():
     client = _make_client()
-    with patch("robustmq.mq9.client.nats.connect", new_callable=AsyncMock) as mock_connect:
+    with patch(
+        "robustmq.mq9.client.nats.connect", new_callable=AsyncMock
+    ) as mock_connect:
         nc = AsyncMock()
         nc.is_closed = False
         mock_connect.return_value = nc
@@ -66,7 +68,9 @@ async def test_connect_and_close():
 @pytest.mark.asyncio
 async def test_context_manager():
     client = _make_client()
-    with patch("robustmq.mq9.client.nats.connect", new_callable=AsyncMock) as mock_connect:
+    with patch(
+        "robustmq.mq9.client.nats.connect", new_callable=AsyncMock
+    ) as mock_connect:
         nc = AsyncMock()
         nc.is_closed = False
         mock_connect.return_value = nc
@@ -105,7 +109,9 @@ async def test_create_public_mailbox():
     nc = await _inject_nc(client)
     nc.request = AsyncMock(return_value=_make_reply({"mail_id": "task.queue"}))
 
-    mailbox = await client.create(ttl=86400, public=True, name="task.queue", desc="Task queue")
+    mailbox = await client.create(
+        ttl=86400, public=True, name="task.queue", desc="Task queue"
+    )
 
     assert mailbox.mail_id == "task.queue"
     assert mailbox.public is True
@@ -298,7 +304,9 @@ async def test_list_messages():
 async def test_list_empty_mailbox():
     client = _make_client()
     nc = await _inject_nc(client)
-    nc.request = AsyncMock(return_value=_make_reply({"mail_id": "m-001", "messages": []}))
+    nc.request = AsyncMock(
+        return_value=_make_reply({"mail_id": "m-001", "messages": []})
+    )
 
     messages = await client.list("m-001")
     assert messages == []
