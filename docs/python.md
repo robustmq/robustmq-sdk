@@ -88,3 +88,93 @@ mailbox = await client.create(ttl=3600, public=True, name="task.queue", desc="Ta
 await client.subscribe(mail_id, handler, queue_group="workers")
 # Each message delivered to exactly one subscriber in the group
 ```
+
+## Error handling
+
+```python
+import asyncio
+from robustmq.mq9 import Client, Priority
+from robustmq.mq9.client import Mq9Error
+import nats.errors
+
+async def main():
+    # ── Connection failure ────────────────────────────────────────────────────
+    # Raised when the NATS server is unreachable.
+    try:
+        client = Client(server="nats://unreachable-host:4222")
+        await client.connect()
+    except Exception as e:
+        print(f"Connection failed: {e}")
+
+    # ── Normal operation with mailbox / request errors ─────────────────────────
+    async with Client(server="nats://demo.robustmq.com:4222") as client:
+
+        # Mailbox not found (404) — raised as Mq9Error with .code == 404
+        try:
+            await client.list("m-does-not-exist")
+        except Mq9Error as e:
+            print(f"mq9 error {e.code}: {e}")   # mq9 error 404: mailbox not found
+
+        # Request timeout — raised as Mq9Error wrapping asyncio.TimeoutError
+        try:
+            await client.list("m-some-mailbox")
+        except Mq9Error as e:
+            print(f"Timed out: {e}")
+
+        # No responders — server not running or subject invalid
+        try:
+            mailbox = await client.create(ttl=3600)
+        except Mq9Error as e:
+            if isinstance(e.__cause__, nats.errors.NoRespondersError):
+                print("No mq9 server is listening on this subject")
+
+asyncio.run(main())
+```
+
+## Usage in AI Agent
+
+Typical pattern: Agent creates its mailbox on startup, runs a message loop, and forwards results to another Agent.
+
+```python
+import asyncio
+from robustmq.mq9 import Client, Priority
+
+SERVER = "nats://demo.robustmq.com:4222"
+DOWNSTREAM_MAIL_ID = "agent-b.inbox"   # well-known address of the next Agent
+
+
+async def process(payload: bytes) -> bytes:
+    """Business logic: transform the incoming task into a result."""
+    task = payload.decode()
+    return f"result:{task}".encode()
+
+
+async def run_agent() -> None:
+    async with Client(server=SERVER) as client:
+        # 1. Create this Agent's own mailbox on startup
+        mailbox = await client.create(ttl=3600)
+        print(f"[agent] started, mail_id={mailbox.mail_id}")
+
+        # 2. Main loop: subscribe and process messages
+        async def handler(msg):
+            print(f"[agent] received [{msg.priority.value}] {msg.payload.decode()}")
+            result = await process(msg.payload)
+
+            # 3. Send result to the downstream Agent
+            await client.send(DOWNSTREAM_MAIL_ID, result, priority=Priority.NORMAL)
+            print(f"[agent] forwarded result to {DOWNSTREAM_MAIL_ID}")
+
+        sub = await client.subscribe(mailbox.mail_id, handler)
+
+        # Keep the Agent running
+        try:
+            await asyncio.Future()   # run forever
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await sub.unsubscribe()
+
+
+if __name__ == "__main__":
+    asyncio.run(run_agent())
+```
