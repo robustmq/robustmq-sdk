@@ -9,7 +9,7 @@ jobs:
   stale:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v10
         with:
           stale-issue-message: "This issue has been inactive for 720 days and is marked as stale. It will be closed in 14 days if there is no further activity."
           close-issue-message: "Closing due to inactivity."
