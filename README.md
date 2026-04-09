@@ -7,7 +7,7 @@ RobustMQ is a single-binary broker that natively supports MQTT, Kafka, NATS, AMQ
 
 ## mq9: AI Agent mailbox protocol
 
-mq9 gives every agent a durable mailbox. Messages persist until TTL expires — senders and receivers do not need to be online simultaneously.
+mq9 gives every agent a durable mailbox. Messages persist until TTL expires — senders and receivers do not need to be online simultaneously. It is purpose-built for multi-agent systems where tasks, results, and signals must survive disconnections and be delivered in priority order.
 
 | Concept | Description |
 |---------|-------------|
@@ -145,6 +145,42 @@ await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
 
 ---
 
+## AI Framework Integration
+
+mq9 integrates with popular AI orchestration frameworks. Each Agent node gets a persistent
+mailbox — tasks and results survive disconnections and are delivered in priority order.
+
+### LangChain
+
+[`langchain-mq9`](langchain-mq9/) provides six LangChain tools covering all mq9 protocol
+operations. Drop them into any LangChain Agent or LangGraph node.
+
+```python
+from langchain_mq9 import Mq9Toolkit
+
+tools = Mq9Toolkit(server="nats://demo.robustmq.com:4222").get_tools()
+# CreateMailboxTool, CreatePublicMailboxTool, SendMessageTool,
+# GetMessagesTool, ListMessagesTool, DeleteMessageTool
+```
+
+### LangGraph
+
+Each LangGraph node can own a private mq9 mailbox and communicate with other nodes
+asynchronously — the graph edges carry state, while mq9 carries the payloads.
+
+```python
+from langchain_mq9 import CreateMailboxTool, SendMessageTool
+
+async def node_writer(state):
+    create = CreateMailboxTool(server="nats://demo.robustmq.com:4222")
+    mail_id = await create._arun(ttl=120)
+    ...
+```
+
+Full examples: [demo/demo-langchain-mq9/](demo/demo-langchain-mq9/) · [demo/demo-langgraph/](demo/demo-langgraph/)
+
+---
+
 ## SDK documentation
 
 | Language | Docs | Demo |
@@ -156,6 +192,8 @@ await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
 | C# | [docs/csharp.md](docs/csharp.md) | [demo/demo-csharp/](demo/demo-csharp/) |
 | Rust | [docs/rust.md](docs/rust.md) | [demo/demo-rust/](demo/demo-rust/) |
 | langchain-mq9 | [docs/langchain-mq9.md](docs/langchain-mq9.md) | [demo/demo-langchain-mq9/](demo/demo-langchain-mq9/) |
+| Multi-agent (Python ↔ Go) | — | [demo/demo-multi-agent/](demo/demo-multi-agent/) |
+| LangGraph workflow | — | [demo/demo-langgraph/](demo/demo-langgraph/) |
 
 ---
 
@@ -189,6 +227,15 @@ cd demo/demo-csharp && dotnet run
 
 # langchain-mq9
 cd demo/demo-langchain-mq9 && pip install -r requirements.txt && python demo.py
+
+# Multi-agent (Python + Go, two terminals)
+cd demo/demo-multi-agent && go run agent_b.go          # terminal 1
+cd demo/demo-multi-agent && python agent_a.py          # terminal 2
+
+# LangGraph workflow
+cd demo/demo-langgraph && pip install robustmq langchain-core langgraph langchain-openai
+export OPENAI_API_KEY=sk-...
+python langgraph_mq9_demo.py
 ```
 
 ---
@@ -212,6 +259,8 @@ demo/
   demo-rust/              # Rust standalone demo
   demo-csharp/            # C# standalone demo
   demo-langchain-mq9/     # langchain-mq9 demo
+  demo-multi-agent/       # cross-language multi-agent demo (Python + Go)
+  demo-langgraph/         # LangGraph workflow demo
 VERSION                   # Canonical version (currently 0.3.5)
 ```
 

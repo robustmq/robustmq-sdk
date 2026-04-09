@@ -177,4 +177,41 @@ async def run_agent() -> None:
 
 if __name__ == "__main__":
     asyncio.run(run_agent())
+
+## LangGraph Integration
+
+The `langchain-mq9` tools work directly inside LangGraph nodes — each node can create a
+mailbox, send messages, and receive replies without any extra wiring.
+
+See the full working example in [demo/demo-langgraph/](../demo/demo-langgraph/) and the
+tool reference in [docs/langchain-mq9.md](langchain-mq9.md).
+
+```python
+from langchain_mq9 import CreateMailboxTool, SendMessageTool, GetMessagesTool
+from langgraph.graph import StateGraph, END
+from typing import TypedDict
+
+SERVER = "nats://demo.robustmq.com:4222"
+
+class State(TypedDict):
+    mail_id: str
+    messages: str
+
+async def node_inbox(state: State) -> State:
+    create = CreateMailboxTool(server=SERVER)
+    state["mail_id"] = await create._arun(ttl=120)
+    return state
+
+async def node_read(state: State) -> State:
+    get = GetMessagesTool(server=SERVER)
+    state["messages"] = await get._arun(mail_id=state["mail_id"], limit=10)
+    return state
+
+g = StateGraph(State)
+g.add_node("inbox", node_inbox)
+g.add_node("read", node_read)
+g.set_entry_point("inbox")
+g.add_edge("inbox", "read")
+g.add_edge("read", END)
+graph = g.compile()
 ```
