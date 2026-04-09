@@ -263,3 +263,102 @@ Common error codes:
 | 404 | Mailbox or message not found |
 | 409 | Conflict (name already taken by another mailbox) |
 | 410 | Mailbox expired |
+
+---
+
+## Typical Scenarios
+
+### Scenario 1: Point-to-point Agent communication
+
+Agent A creates a private mailbox and publishes its `mail_id` to a well-known public mailbox.
+Agent B reads the public mailbox to discover Agent A's address, sends a task result, and Agent A receives it.
+
+```bash
+# ── Step 1: Agent A creates a private mailbox ────────────────────────────────
+nats req '$mq9.AI.MAILBOX.CREATE' '{"ttl":3600}'
+# → {"mail_id":"m-550e8400-e29b-41d4-a716-446655440000"}
+# Agent A stores this mail_id locally.
+
+# ── Step 2: Agent A creates a well-known public mailbox for address exchange ──
+nats req '$mq9.AI.MAILBOX.CREATE' '{"ttl":3600,"public":true,"name":"agent-a.inbox","desc":"Agent A address board"}'
+# → {"mail_id":"agent-a.inbox"}
+
+# ── Step 3: Agent A publishes its private mail_id to the public mailbox ───────
+nats pub '$mq9.AI.MAILBOX.MSG.agent-a.inbox.normal' \
+  '{"reply_to":"m-550e8400-e29b-41d4-a716-446655440000"}'
+
+# ── Step 4: Agent B subscribes to the public mailbox to discover Agent A ──────
+nats sub '$mq9.AI.MAILBOX.MSG.agent-a.inbox.*'
+# ← {"reply_to":"m-550e8400-e29b-41d4-a716-446655440000"}
+# Agent B now knows Agent A's private mail_id.
+
+# ── Step 5: Agent B sends a task result to Agent A's private mailbox ──────────
+nats pub '$mq9.AI.MAILBOX.MSG.m-550e8400-e29b-41d4-a716-446655440000.high' \
+  '{"status":"done","result":"analysis complete","score":0.97}'
+
+# ── Step 6: Agent A subscribes to its private mailbox and receives the result ─
+nats sub '$mq9.AI.MAILBOX.MSG.m-550e8400-e29b-41d4-a716-446655440000.*'
+# ← {"status":"done","result":"analysis complete","score":0.97}
+
+# ── Step 7: Agent A deletes the processed message ─────────────────────────────
+# First list to get msg_id:
+nats req '$mq9.AI.MAILBOX.LIST.m-550e8400-e29b-41d4-a716-446655440000' '{}'
+# → {"mail_id":"m-550e...","messages":[{"msg_id":"msg-001","priority":"high","ts":1700000001}]}
+
+nats req '$mq9.AI.MAILBOX.DELETE.m-550e8400-e29b-41d4-a716-446655440000.msg-001' '{}'
+# → {"deleted":true}
+```
+
+**Key points:**
+- Agent A's private `mail_id` is a UUID — it is not guessable. Only agents that receive it can send to it.
+- The public mailbox `agent-a.inbox` acts as a lightweight address directory.
+- Because mq9 is store-first, Agent B can read the address even if it starts after Agent A published it.
+
+---
+
+### Scenario 2: Multi-worker competitive task queue
+
+A producer sends tasks at different priorities to a public mailbox. Three workers subscribe with the same `queue_group`, so each task is delivered to exactly one worker.
+
+```bash
+# ── Step 1: Create the shared task queue ──────────────────────────────────────
+nats req '$mq9.AI.MAILBOX.CREATE' \
+  '{"ttl":86400,"public":true,"name":"task.queue","desc":"Shared worker task queue"}'
+# → {"mail_id":"task.queue"}
+
+# ── Step 2: Start 3 workers (run each in a separate terminal) ─────────────────
+# Worker 1:
+nats sub '$mq9.AI.MAILBOX.MSG.task.queue.*' --queue workers
+# Worker 2:
+nats sub '$mq9.AI.MAILBOX.MSG.task.queue.*' --queue workers
+# Worker 3:
+nats sub '$mq9.AI.MAILBOX.MSG.task.queue.*' --queue workers
+# Each message is delivered to exactly one worker in the "workers" group.
+
+# ── Step 3: Producer sends 5 tasks with mixed priorities ──────────────────────
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.high'   '{"task_id":"t-001","type":"urgent-analysis"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.normal' '{"task_id":"t-002","type":"summarize"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.low'    '{"task_id":"t-003","type":"index"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.high'   '{"task_id":"t-004","type":"alert"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.normal' '{"task_id":"t-005","type":"report"}'
+
+# ── Step 4: Observe delivery ───────────────────────────────────────────────────
+# High-priority tasks (t-001, t-004) are delivered before normal and low.
+# Each task goes to exactly one worker — no duplicate processing.
+# Workers that start after the producer still receive stored messages immediately.
+
+# Example worker output (distribution will vary):
+# Worker 1 ← t-001 (high), t-003 (low)
+# Worker 2 ← t-004 (high), t-005 (normal)
+# Worker 3 ← t-002 (normal)
+
+# ── Step 5: Check remaining queue depth ───────────────────────────────────────
+nats req '$mq9.AI.MAILBOX.LIST.task.queue' '{}'
+# → {"mail_id":"task.queue","messages":[]}   (all consumed)
+```
+
+**Key points:**
+- All workers use the same `queue_group` name (`workers`). NATS delivers each message to exactly one member.
+- High-priority messages stored before workers connect are still delivered in priority order on subscribe.
+- Workers can be added or removed at any time — the queue group adjusts automatically.
+- If a worker crashes before deleting its message, the message remains in the mailbox and will be re-delivered when the worker reconnects (store-first semantics).
