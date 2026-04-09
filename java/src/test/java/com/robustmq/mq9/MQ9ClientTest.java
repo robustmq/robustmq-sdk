@@ -194,7 +194,7 @@ class MQ9ClientTest {
     // ── close ─────────────────────────────────────────────────────────────────
 
     @Test
-    void closeDrainsConnection() {
+    void closeDrainsConnection() throws Exception {
         // nc is already injected; close should attempt drain
         // We mock drain to return a CompletableFuture so it doesn't block
         when(mockNc.drain(any(Duration.class)))
