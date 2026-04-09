@@ -340,8 +340,6 @@ async def test_delete_message():
 
 @pytest.mark.asyncio
 async def test_request_timeout_raises_mq9_error():
-    import nats.errors
-
     client = _make_client()
     nc = await _inject_nc(client)
     nc.request = AsyncMock(side_effect=asyncio.TimeoutError())
