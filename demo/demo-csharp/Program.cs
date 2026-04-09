@@ -2,9 +2,8 @@
  * mq9 C# demo — connects to nats://localhost:4222 and runs the full scenario.
  *
  * Run:
- *   cd csharp && dotnet run --project Demo
- *
- * Or reference RobustMQ.Mq9 from a standalone project and run this file.
+ *   cd demo/demo-csharp
+ *   dotnet run
  */
 
 using System.Text;

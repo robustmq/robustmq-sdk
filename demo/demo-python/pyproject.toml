@@ -1,0 +1,11 @@
+[project]
+name = "demo-python"
+version = "1.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "robustmq-mq9==1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,4 +1,4 @@
-package io.robustmq.mq9;
+package com.robustmq.mq9;
 
 public class Mailbox {
     private final String mailId;

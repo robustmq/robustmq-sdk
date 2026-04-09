@@ -2,16 +2,12 @@
 mq9 Python demo — connects to nats://localhost:4222 and runs the full scenario.
 
 Run:
-    cd python && pip install -e .
-    python ../demo/demo.py
+    cd demo/demo-python
+    pip install -r requirements.txt
+    python demo.py
 """
 
 import asyncio
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "python"))
-
 from robustmq.mq9 import Client, Priority
 
 
@@ -31,14 +27,11 @@ async def main() -> None:
     print("[python] sent 3 messages (high / normal / low)")
 
     # 3. Subscribe and print received messages
-    received: list[bytes] = []
-
     async def handler(msg):
         print(f"[python] received [{msg.priority.value}] {msg.payload.decode()}")
-        received.append(msg)
 
     sub = await client.subscribe(mailbox.mail_id, handler)
-    await asyncio.sleep(0.5)  # let stored messages drain
+    await asyncio.sleep(0.5)
     await sub.unsubscribe()
 
     # 4. List mailbox metadata

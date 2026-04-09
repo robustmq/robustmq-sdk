@@ -1,0 +1,13 @@
+{
+  "name": "demo-javascript",
+  "version": "1.0.0",
+  "description": "RobustMQ mq9 JavaScript demo",
+  "main": "demo.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node demo.js"
+  },
+  "dependencies": {
+    "@robustmq/mq9": "1.0.0"
+  }
+}

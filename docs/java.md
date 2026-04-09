@@ -1,13 +1,13 @@
 # Java SDK
 
-**Package:** `io.robustmq.mq9`  
+**Package:** `com.robustmq.mq9`  
 **Requires:** Java 17+, `jnats`, `jackson-databind`
 
 ## Install
 
 ```xml
 <dependency>
-  <groupId>io.robustmq</groupId>
+  <groupId>com.robustmq</groupId>
   <artifactId>robustmq-sdk</artifactId>
   <version>1.0.0</version>
 </dependency>
@@ -16,7 +16,7 @@
 ## Quick start
 
 ```java
-import io.robustmq.mq9.*;
+import com.robustmq.mq9.*;
 import java.util.List;
 
 MQ9Client client = new MQ9Client("nats://localhost:4222");
