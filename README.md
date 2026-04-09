@@ -37,7 +37,7 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 | Python | `robustmq` | 0.3.5 | `pip install robustmq` |
 | Go | `github.com/robustmq/robustmq-sdk/go` | v0.3.5 | `go get github.com/robustmq/robustmq-sdk/go` |
 | JavaScript | `@robustmq/sdk` | 0.3.5 | `npm install @robustmq/sdk` |
-| Java | `com.robustmq:robustmq-sdk` | 0.3.5 | Maven / Gradle (see below) |
+| Java | `com.robustmq:robustmq` | 0.3.5 | Maven / Gradle (see below) |
 | Rust | `robustmq` | 0.3.5 | `cargo add robustmq` |
 | C# | `RobustMQ` | 0.3.5 | `dotnet add package RobustMQ` |
 
@@ -92,7 +92,7 @@ await client.send(mailbox.mailId, "hello", "normal");
 ```xml
 <dependency>
   <groupId>com.robustmq</groupId>
-  <artifactId>robustmq-sdk</artifactId>
+  <artifactId>robustmq</artifactId>
   <version>0.3.5</version>
 </dependency>
 ```
@@ -107,7 +107,7 @@ client.send(mailbox.getMailId(), "hello".getBytes(), Priority.NORMAL).get();
 
 **Java (Gradle)**
 ```groovy
-implementation 'com.robustmq:robustmq-sdk:0.3.5'
+implementation 'com.robustmq:robustmq:0.3.5'
 ```
 
 **Rust**

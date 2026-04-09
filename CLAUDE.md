@@ -30,7 +30,7 @@ Users install one package and import the protocol they need.
 | Python     | `robustmq` (PyPI)            | `from robustmq.mq9 import Client`             |
 | Go         | `robustmq-sdk/go` (git tag)  | `import "github.com/robustmq/robustmq-sdk/go/mq9"` |
 | JavaScript | `@robustmq/sdk` (npm)        | `import { MQ9Client } from '@robustmq/sdk/mq9'` |
-| Java       | `com.robustmq:robustmq-sdk`  | `import com.robustmq.mq9.*`                   |
+| Java       | `com.robustmq:robustmq`  | `import com.robustmq.mq9.*`                   |
 | Rust       | `robustmq` (crates.io)       | `use robustmq::mq9::MQ9Client`                |
 | C#         | `RobustMQ` (NuGet)           | `using RobustMQ.Mq9`                          |
 

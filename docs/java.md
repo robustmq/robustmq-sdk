@@ -8,7 +8,7 @@
 ```xml
 <dependency>
   <groupId>com.robustmq</groupId>
-  <artifactId>robustmq-sdk</artifactId>
+  <artifactId>robustmq</artifactId>
   <version>0.3.5</version>
 </dependency>
 ```
