@@ -49,6 +49,7 @@ jobs:
           check "JavaScript" "javascript/package.json"                   "\"version\": \"${VERSION}\""
           check "Java"       "java/pom.xml"                              "<version>${VERSION}</version>"
           check "C#"         "csharp/RobustMQ.Mq9/RobustMQ.Mq9.csproj" "<Version>${VERSION}</Version>"
+          check "langchain-mq9" "langchain-mq9/pyproject.toml"          "version = \"${VERSION}\""
           echo "All build files verified: ${VERSION}"
 
       - name: Create and push git tag
