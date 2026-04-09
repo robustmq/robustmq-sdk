@@ -1,4 +1,4 @@
-package io.robustmq.mq9;
+package com.robustmq.mq9;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

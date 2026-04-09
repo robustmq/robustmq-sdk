@@ -1,4 +1,4 @@
-package io.robustmq.mq9;
+package com.robustmq.mq9;
 
 import io.nats.client.Connection;
 import io.nats.client.Subscription;

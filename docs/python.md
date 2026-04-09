@@ -6,7 +6,7 @@
 ## Install
 
 ```bash
-cd python && pip install -e .
+pip install robustmq-mq9
 ```
 
 ## Quick start

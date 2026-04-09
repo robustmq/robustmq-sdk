@@ -32,21 +32,24 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 
 ## SDK status
 
-| Language | Package | Status |
-|----------|---------|--------|
-| Python | `robustmq.mq9` | ✅ Implemented |
-| Go | `mq9` | ✅ Implemented |
-| JavaScript | `@robustmq/mq9` | ✅ Implemented |
-| Java | `io.robustmq.mq9` | ✅ Implemented |
-| C# | `RobustMQ.Mq9` | ✅ Implemented |
-| Rust | `robustmq::mq9` | ✅ Implemented |
+| Language | Package | Version | Install |
+|----------|---------|---------|---------|
+| Python | `robustmq-mq9` | 1.0.0 | `pip install robustmq-mq9` |
+| Go | `github.com/robustmq/robustmq-sdk/go` | v1.0.0 | `go get github.com/robustmq/robustmq-sdk/go` |
+| JavaScript | `@robustmq/mq9` | 1.0.0 | `npm install @robustmq/mq9` |
+| Java | `com.robustmq:robustmq-sdk` | 1.0.0 | Maven / Gradle (see below) |
+| Rust | `robustmq` | 1.0.0 | `cargo add robustmq` |
+| C# | `RobustMQ.Mq9` | 1.0.0 | `dotnet add package RobustMQ.Mq9` |
 
 ---
 
 ## Quick start
 
+**Python**
+```bash
+pip install robustmq-mq9
+```
 ```python
-# Python
 from robustmq.mq9 import Client, Priority
 
 async with Client("nats://localhost:4222") as client:
@@ -59,7 +62,80 @@ async with Client("nats://localhost:4222") as client:
     await client.subscribe(mailbox.mail_id, handler)
 ```
 
-See language-specific docs below for all SDKs.
+**Go**
+```bash
+go get github.com/robustmq/robustmq-sdk/go
+```
+```go
+import "github.com/robustmq/robustmq-sdk/go/mq9"
+
+c := mq9.NewMQ9Client("nats://localhost:4222")
+c.Connect()
+mailbox, _ := c.Create(3600)
+c.Send(mailbox.MailID, []byte("hello"), mq9.Normal)
+```
+
+**JavaScript / TypeScript**
+```bash
+npm install @robustmq/mq9
+```
+```typescript
+import { MQ9Client } from "@robustmq/mq9";
+
+const client = new MQ9Client({ server: "nats://localhost:4222" });
+await client.connect();
+const mailbox = await client.create({ ttl: 3600 });
+await client.send(mailbox.mailId, "hello", "normal");
+```
+
+**Java (Maven)**
+```xml
+<dependency>
+  <groupId>com.robustmq</groupId>
+  <artifactId>robustmq-sdk</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
+```java
+import com.robustmq.mq9.*;
+
+MQ9Client client = new MQ9Client("nats://localhost:4222");
+client.connect();
+Mailbox mailbox = client.create(3600).get();
+client.send(mailbox.getMailId(), "hello".getBytes(), Priority.NORMAL).get();
+```
+
+**Java (Gradle)**
+```groovy
+implementation 'com.robustmq:robustmq-sdk:1.0.0'
+```
+
+**Rust**
+```toml
+[dependencies]
+robustmq = "1.0"
+tokio = { version = "1", features = ["full"] }
+```
+```rust
+use robustmq::mq9::{MQ9Client, Priority};
+
+let client = MQ9Client::connect("nats://localhost:4222").await?;
+let mailbox = client.create(3600, false, "", "").await?;
+client.send(&mailbox.mail_id, b"hello", Priority::Normal).await?;
+```
+
+**C#**
+```bash
+dotnet add package RobustMQ.Mq9
+```
+```csharp
+using RobustMQ.Mq9;
+
+await using var client = new MQ9Client("nats://localhost:4222");
+await client.ConnectAsync();
+var mailbox = await client.CreateAsync(3600);
+await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
+```
 
 ---
 
@@ -67,18 +143,18 @@ See language-specific docs below for all SDKs.
 
 | Language | Docs | Demo |
 |----------|------|------|
-| Python | [docs/python.md](docs/python.md) | [demo/demo.py](demo/demo.py) |
-| Go | [docs/go.md](docs/go.md) | [demo/demo.go](demo/demo.go) |
-| JavaScript | [docs/javascript.md](docs/javascript.md) | [demo/demo.ts](demo/demo.ts) |
-| Java | [docs/java.md](docs/java.md) | [demo/Demo.java](demo/Demo.java) |
-| C# | [docs/csharp.md](docs/csharp.md) | [demo/demo.cs](demo/demo.cs) |
-| Rust | [docs/rust.md](docs/rust.md) | [demo/demo.rs](demo/demo.rs) |
+| Python | [docs/python.md](docs/python.md) | [demo/demo-python/](demo/demo-python/) |
+| Go | [docs/go.md](docs/go.md) | [demo/demo-go/](demo/demo-go/) |
+| JavaScript | [docs/javascript.md](docs/javascript.md) | [demo/demo-javascript/](demo/demo-javascript/) |
+| Java | [docs/java.md](docs/java.md) | [demo/demo-java/](demo/demo-java/) |
+| C# | [docs/csharp.md](docs/csharp.md) | [demo/demo-csharp/](demo/demo-csharp/) |
+| Rust | [docs/rust.md](docs/rust.md) | [demo/demo-rust/](demo/demo-rust/) |
 
 ---
 
 ## Running the demo
 
-Each demo script connects to `nats://localhost:4222` and runs the same scenario:
+Each demo is a standalone project that connects to `nats://localhost:4222` and runs the same scenario:
 1. Create a private mailbox (TTL 60s)
 2. Send 3 messages (high / normal / low priority)
 3. Subscribe and print received messages
@@ -87,24 +163,22 @@ Each demo script connects to `nats://localhost:4222` and runs the same scenario:
 
 ```bash
 # Python
-cd python && pip install -e .
-python ../demo/demo.py
+cd demo/demo-python && pip install -r requirements.txt && python demo.py
 
 # Go
-cd go && go run ../demo/demo.go
+cd demo/demo-go && go run .
 
 # JavaScript
-cd javascript && npm install && npx ts-node ../demo/demo.ts
+cd demo/demo-javascript && npm install && npm start
 
 # Java
-cd java && mvn compile
-mvn exec:java -Dexec.mainClass=Demo
+cd demo/demo-java && mvn compile exec:java
 
 # Rust
-cd rust && cargo run --example demo
+cd demo/demo-rust && cargo run
 
 # C#
-cd csharp && dotnet run --project Demo
+cd demo/demo-csharp && dotnet run
 ```
 
 ---
@@ -112,15 +186,21 @@ cd csharp && dotnet run --project Demo
 ## Repository layout
 
 ```
-python/          # Python SDK
-go/              # Go SDK
-javascript/      # JavaScript/TypeScript SDK
-java/            # Java SDK
-csharp/          # C# SDK
-rust/            # Rust SDK
-docs/            # SDK docs + protocol spec
-demo/            # End-to-end demo scripts (one per language)
-VERSION          # Canonical version (currently 1.0.0)
+python/            # Python SDK
+go/                # Go SDK
+javascript/        # JavaScript/TypeScript SDK
+java/              # Java SDK
+csharp/            # C# SDK
+rust/              # Rust SDK
+docs/              # SDK docs + protocol spec
+demo/
+  demo-python/     # Python standalone demo project
+  demo-go/         # Go standalone demo project
+  demo-javascript/ # JavaScript standalone demo project
+  demo-java/       # Java standalone demo project (Maven)
+  demo-rust/       # Rust standalone demo project
+  demo-csharp/     # C# standalone demo project
+VERSION            # Canonical version (currently 1.0.0)
 ```
 
 ---

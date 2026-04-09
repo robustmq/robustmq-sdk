@@ -34,7 +34,7 @@ When bumping the version, update `VERSION` and all 6 build files in one commit:
 | Rust       | `robustmq_mq9`    | `MQ9Client` | `async-nats` | Scaffolded     |
 | Go         | `mq9` (pkg)       | `MQ9Client` | `nats.go`    | Scaffolded     |
 | JavaScript | `@robustmq/mq9`   | `MQ9Client` | `nats` v2    | Scaffolded     |
-| Java       | `io.robustmq.mq9` | `MQ9Client` | `jnats`      | Scaffolded     |
+| Java       | `com.robustmq.mq9` | `MQ9Client` | `jnats`      | Scaffolded     |
 | C#         | `RobustMQ.Mq9`    | `MQ9Client` | `NATS.Net`   | Scaffolded     |
 
 Go constructor convention: `NewMQ9Client(...)` (struct, not class).

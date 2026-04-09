@@ -1,9 +1,9 @@
-package io.robustmq.demo;
+package com.robustmq.demo;
 
-import io.robustmq.mq9.Mailbox;
-import io.robustmq.mq9.MQ9Client;
-import io.robustmq.mq9.MessageMeta;
-import io.robustmq.mq9.Priority;
+import com.robustmq.mq9.Mailbox;
+import com.robustmq.mq9.MQ9Client;
+import com.robustmq.mq9.MessageMeta;
+import com.robustmq.mq9.Priority;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;

@@ -1,4 +1,4 @@
-package io.robustmq.mq9;
+package com.robustmq.mq9;
 
 public class Message {
     private final String msgId;

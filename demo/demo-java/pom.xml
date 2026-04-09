@@ -20,7 +20,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>io.robustmq</groupId>
+      <groupId>com.robustmq</groupId>
       <artifactId>robustmq-sdk</artifactId>
       <version>1.0.0</version>
     </dependency>
@@ -33,7 +33,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.2.0</version>
         <configuration>
-          <mainClass>io.robustmq.demo.Demo</mainClass>
+          <mainClass>com.robustmq.demo.Demo</mainClass>
         </configuration>
       </plugin>
     </plugins>
