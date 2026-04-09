@@ -187,10 +187,7 @@ jobs:
 
   release-csharp:
     needs: prepare
-    if: false  # disabled: enable when NuGet Trusted Publishing is configured
     runs-on: ubuntu-22.04
-    permissions:
-      id-token: write  # required for NuGet Trusted Publishing
     steps:
       - uses: actions/checkout@v4
         with:
@@ -204,9 +201,11 @@ jobs:
       - name: Pack
         working-directory: csharp/RobustMQ.Mq9
         run: dotnet pack -c Release --no-build -o ../nupkg
-      - name: Publish to NuGet (Trusted Publishing)
+      - name: Publish to NuGet
         working-directory: csharp
-        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push nupkg/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
 
   # ── Step 3: summary ─────────────────────────────────────────────────────────
   summary:
