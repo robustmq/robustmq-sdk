@@ -1,4 +1,10 @@
-import { MQ9Client, MQ9Error, NatsTransport, Mq9Message, MessageMeta, Priority } from "./client.js";
+import {
+  MQ9Client,
+  MQ9Error,
+  NatsTransport,
+  MessageMeta,
+  Priority,
+} from "./client.js";
 
 // ---------------------------------------------------------------------------
 // Mock transport
@@ -41,13 +47,15 @@ describe("create", () => {
     expect(t.request).toHaveBeenCalledWith(
       "$mq9.AI.MAILBOX.CREATE",
       expect.any(Uint8Array),
-      expect.anything()
+      expect.anything(),
     );
   });
 
   test("public mailbox", async () => {
     const t = mockTransport({
-      request: jest.fn().mockResolvedValue(jsonReply({ mail_id: "task.queue" })),
+      request: jest
+        .fn()
+        .mockResolvedValue(jsonReply({ mail_id: "task.queue" })),
     });
     const client = clientWith(t);
     const mb = await client.create({
@@ -61,7 +69,7 @@ describe("create", () => {
     expect(mb.public).toBe(true);
 
     const sentPayload = JSON.parse(
-      Buffer.from((t.request as jest.Mock).mock.calls[0][1]).toString()
+      Buffer.from((t.request as jest.Mock).mock.calls[0][1]).toString(),
     );
     expect(sentPayload.public).toBe(true);
     expect(sentPayload.name).toBe("task.queue");
@@ -70,15 +78,15 @@ describe("create", () => {
   test("public without name throws MQ9Error", async () => {
     const client = clientWith(mockTransport());
     await expect(client.create({ ttl: 3600, public: true })).rejects.toThrow(
-      MQ9Error
+      MQ9Error,
     );
   });
 
   test("server error throws MQ9Error with code", async () => {
     const t = mockTransport({
-      request: jest.fn().mockResolvedValue(
-        jsonReply({ error: "quota exceeded", code: 429 })
-      ),
+      request: jest
+        .fn()
+        .mockResolvedValue(jsonReply({ error: "quota exceeded", code: 429 })),
     });
     const client = clientWith(t);
     const err = await client.create({ ttl: 3600 }).catch((e) => e);
@@ -99,7 +107,7 @@ describe("send", () => {
 
     expect(t.publish).toHaveBeenCalledWith(
       "$mq9.AI.MAILBOX.MSG.m-001.normal",
-      expect.any(Uint8Array)
+      expect.any(Uint8Array),
     );
   });
 
@@ -110,7 +118,7 @@ describe("send", () => {
 
     expect(t.publish).toHaveBeenCalledWith(
       "$mq9.AI.MAILBOX.MSG.m-001.high",
-      expect.any(Uint8Array)
+      expect.any(Uint8Array),
     );
   });
 
@@ -129,7 +137,9 @@ describe("send", () => {
     await client.send("m-001", { task: "summarize" });
 
     const data = (t.publish as jest.Mock).mock.calls[0][1] as Uint8Array;
-    expect(JSON.parse(Buffer.from(data).toString())).toEqual({ task: "summarize" });
+    expect(JSON.parse(Buffer.from(data).toString())).toEqual({
+      task: "summarize",
+    });
   });
 });
 
@@ -143,10 +153,8 @@ describe("list", () => {
       request: jest.fn().mockResolvedValue(
         jsonReply({
           mail_id: "m-001",
-          messages: [
-            { msg_id: "x1", priority: "high", ts: 100 },
-          ],
-        })
+          messages: [{ msg_id: "x1", priority: "high", ts: 100 }],
+        }),
       ),
     });
     const client = clientWith(t);
@@ -160,15 +168,15 @@ describe("list", () => {
     expect(t.request).toHaveBeenCalledWith(
       "$mq9.AI.MAILBOX.LIST.m-001",
       expect.any(Uint8Array),
-      expect.anything()
+      expect.anything(),
     );
   });
 
   test("returns empty array for empty mailbox", async () => {
     const t = mockTransport({
-      request: jest.fn().mockResolvedValue(
-        jsonReply({ mail_id: "m-001", messages: [] })
-      ),
+      request: jest
+        .fn()
+        .mockResolvedValue(jsonReply({ mail_id: "m-001", messages: [] })),
     });
     const client = clientWith(t);
     const msgs = await client.list("m-001");
@@ -191,7 +199,7 @@ describe("delete", () => {
     expect(t.request).toHaveBeenCalledWith(
       "$mq9.AI.MAILBOX.DELETE.m-001.msg-42",
       expect.any(Uint8Array),
-      expect.anything()
+      expect.anything(),
     );
   });
 });

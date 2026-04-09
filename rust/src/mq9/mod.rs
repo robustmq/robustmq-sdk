@@ -108,7 +108,7 @@ pub struct Message {
 }
 
 /// A raw incoming message from the transport (subject + payload bytes).
-pub(crate) struct RawMsg {
+pub struct RawMsg {
     pub subject: String,
     pub payload: Bytes,
 }
@@ -189,10 +189,13 @@ impl NatsTransport for RealNats {
         payload: Bytes,
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<(), MQ9Error>> + Send + 'a>> {
         Box::pin(async move {
-            self.0.publish(subject, payload).await.map_err(|e| MQ9Error {
-                message: format!("publish failed: {e}"),
-                code: 0,
-            })
+            self.0
+                .publish(subject, payload)
+                .await
+                .map_err(|e| MQ9Error {
+                    message: format!("publish failed: {e}"),
+                    code: 0,
+                })
         })
     }
 
@@ -202,10 +205,14 @@ impl NatsTransport for RealNats {
         payload: Bytes,
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<Bytes, MQ9Error>> + Send + 'a>> {
         Box::pin(async move {
-            let reply = self.0.request(subject, payload).await.map_err(|e| MQ9Error {
-                message: format!("request failed: {e}"),
-                code: 0,
-            })?;
+            let reply = self
+                .0
+                .request(subject, payload)
+                .await
+                .map_err(|e| MQ9Error {
+                    message: format!("request failed: {e}"),
+                    code: 0,
+                })?;
             Ok(reply.payload)
         })
     }
@@ -217,10 +224,13 @@ impl NatsTransport for RealNats {
     ) -> std::pin::Pin<Box<dyn Future<Output = Result<MsgStream, MQ9Error>> + Send + 'a>> {
         Box::pin(async move {
             let sub = if let Some(queue) = queue_group {
-                self.0.queue_subscribe(subject, queue).await.map_err(|e| MQ9Error {
-                    message: format!("queue_subscribe failed: {e}"),
-                    code: 0,
-                })?
+                self.0
+                    .queue_subscribe(subject, queue)
+                    .await
+                    .map_err(|e| MQ9Error {
+                        message: format!("queue_subscribe failed: {e}"),
+                        code: 0,
+                    })?
             } else {
                 self.0.subscribe(subject).await.map_err(|e| MQ9Error {
                     message: format!("subscribe failed: {e}"),
@@ -390,11 +400,7 @@ impl MQ9Client {
         let resp = self.do_request(&subject, &serde_json::json!({})).await?;
         let metas = resp["messages"]
             .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| parse_message_meta(v))
-                    .collect()
-            })
+            .map(|arr| arr.iter().filter_map(parse_message_meta).collect())
             .unwrap_or_default();
         Ok(metas)
     }
@@ -482,7 +488,11 @@ fn parse_message_meta(v: &Value) -> Option<MessageMeta> {
     let msg_id = v["msg_id"].as_str()?.to_string();
     let priority = Priority::from_str_lossy(v["priority"].as_str().unwrap_or("normal"));
     let ts = v["ts"].as_i64().unwrap_or(0);
-    Some(MessageMeta { msg_id, priority, ts })
+    Some(MessageMeta {
+        msg_id,
+        priority,
+        ts,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -577,7 +587,10 @@ mod tests {
 
         fn push_ok(&self, body: serde_json::Value) {
             let bytes = Bytes::from(serde_json::to_vec(&body).unwrap());
-            self.responses.lock().unwrap().push_back(MockResponse::Ok(bytes));
+            self.responses
+                .lock()
+                .unwrap()
+                .push_back(MockResponse::Ok(bytes));
         }
 
         fn push_err(&self, message: &str, code: u32) {
@@ -614,7 +627,10 @@ mod tests {
             subject: String,
             payload: Bytes,
         ) -> std::pin::Pin<Box<dyn Future<Output = Result<(), MQ9Error>> + Send + 'a>> {
-            self.published.lock().unwrap().push((subject, payload.to_vec()));
+            self.published
+                .lock()
+                .unwrap()
+                .push((subject, payload.to_vec()));
             Box::pin(async { Ok(()) })
         }
 
@@ -623,7 +639,10 @@ mod tests {
             subject: String,
             payload: Bytes,
         ) -> std::pin::Pin<Box<dyn Future<Output = Result<Bytes, MQ9Error>> + Send + 'a>> {
-            self.requested.lock().unwrap().push((subject, payload.to_vec()));
+            self.requested
+                .lock()
+                .unwrap()
+                .push((subject, payload.to_vec()));
             let resp = self.responses.lock().unwrap().pop_front();
             Box::pin(async move {
                 match resp {
@@ -633,7 +652,10 @@ mod tests {
                         let body = json!({ "error": message, "code": code });
                         Ok(Bytes::from(serde_json::to_vec(&body).unwrap()))
                     }
-                    None => Err(MQ9Error { message: "no mock response queued".into(), code: 0 }),
+                    None => Err(MQ9Error {
+                        message: "no mock response queued".into(),
+                        code: 0,
+                    }),
                 }
             })
         }
@@ -642,7 +664,8 @@ mod tests {
             &'a self,
             subject: String,
             queue_group: Option<String>,
-        ) -> std::pin::Pin<Box<dyn Future<Output = Result<MsgStream, MQ9Error>> + Send + 'a>> {
+        ) -> std::pin::Pin<Box<dyn Future<Output = Result<MsgStream, MQ9Error>> + Send + 'a>>
+        {
             self.subscribed.lock().unwrap().push((subject, queue_group));
             // Drain the pre-loaded messages into a stream that yields them all then ends.
             let messages: Vec<RawMsg> = self.sub_messages.lock().unwrap().drain(..).collect();
@@ -703,7 +726,10 @@ mod tests {
         mock.push_ok(json!({ "mail_id": "task.queue" }));
         let client = make_client(mock);
 
-        let mailbox = client.create(86400, true, "task.queue", "Task queue").await.unwrap();
+        let mailbox = client
+            .create(86400, true, "task.queue", "Task queue")
+            .await
+            .unwrap();
 
         assert_eq!(mailbox.mail_id, "task.queue");
         assert!(mailbox.public);
@@ -729,7 +755,10 @@ mod tests {
         let arc = mock.clone();
         let client = MQ9Client { transport: mock };
 
-        client.create(86400, true, "task.queue", "Tasks").await.unwrap();
+        client
+            .create(86400, true, "task.queue", "Tasks")
+            .await
+            .unwrap();
 
         let calls = arc.requested();
         let body: serde_json::Value = serde_json::from_slice(&calls[0].1).unwrap();
@@ -762,7 +791,10 @@ mod tests {
         let arc = mock.clone();
         let client = MQ9Client { transport: mock };
 
-        client.send("m-001", b"hello", Priority::Normal).await.unwrap();
+        client
+            .send("m-001", b"hello", Priority::Normal)
+            .await
+            .unwrap();
 
         let calls = arc.published();
         assert_eq!(calls.len(), 1);
@@ -776,7 +808,10 @@ mod tests {
         let arc = mock.clone();
         let client = MQ9Client { transport: mock };
 
-        client.send("m-001", b"urgent", Priority::High).await.unwrap();
+        client
+            .send("m-001", b"urgent", Priority::High)
+            .await
+            .unwrap();
 
         let calls = arc.published();
         assert_eq!(calls[0].0, "$mq9.AI.MAILBOX.MSG.m-001.high");
@@ -801,7 +836,10 @@ mod tests {
         let client = MQ9Client { transport: mock };
         let payload = b"binary\x00data\xff";
 
-        client.send("m-001", payload, Priority::Normal).await.unwrap();
+        client
+            .send("m-001", payload, Priority::Normal)
+            .await
+            .unwrap();
 
         assert_eq!(&arc.published()[0].1, payload);
     }
@@ -820,7 +858,10 @@ mod tests {
         let arc = mock.clone();
         let client = MQ9Client { transport: mock };
 
-        let _sub = client.subscribe("m-001", |_msg| async {}, None, "").await.unwrap();
+        let _sub = client
+            .subscribe("m-001", |_msg| async {}, None, "")
+            .await
+            .unwrap();
 
         let calls = arc.subscribed();
         assert_eq!(calls.len(), 1);
@@ -912,8 +953,16 @@ mod tests {
             let n = (b0 << 16) | (b1 << 8) | b2;
             out.push(ALPHA[((n >> 18) & 63) as usize] as char);
             out.push(ALPHA[((n >> 12) & 63) as usize] as char);
-            out.push(if chunk.len() > 1 { ALPHA[((n >> 6) & 63) as usize] as char } else { '=' });
-            out.push(if chunk.len() > 2 { ALPHA[(n & 63) as usize] as char } else { '=' });
+            out.push(if chunk.len() > 1 {
+                ALPHA[((n >> 6) & 63) as usize] as char
+            } else {
+                '='
+            });
+            out.push(if chunk.len() > 2 {
+                ALPHA[(n & 63) as usize] as char
+            } else {
+                '='
+            });
         }
         out
     }
@@ -1016,7 +1065,10 @@ mod tests {
 
     #[test]
     fn test_mq9_error_display_with_code() {
-        let err = MQ9Error { message: "quota exceeded".into(), code: 429 };
+        let err = MQ9Error {
+            message: "quota exceeded".into(),
+            code: 429,
+        };
         let s = err.to_string();
         assert!(s.contains("429"));
         assert!(s.contains("quota exceeded"));
@@ -1024,14 +1076,20 @@ mod tests {
 
     #[test]
     fn test_mq9_error_display_no_code() {
-        let err = MQ9Error { message: "connection failed".into(), code: 0 };
+        let err = MQ9Error {
+            message: "connection failed".into(),
+            code: 0,
+        };
         let s = err.to_string();
         assert!(s.contains("connection failed"));
     }
 
     #[test]
     fn test_mq9_error_is_std_error() {
-        let err: Box<dyn std::error::Error> = Box::new(MQ9Error { message: "oops".into(), code: 500 });
+        let err: Box<dyn std::error::Error> = Box::new(MQ9Error {
+            message: "oops".into(),
+            code: 500,
+        });
         assert!(err.to_string().contains("oops"));
     }
 

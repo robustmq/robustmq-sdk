@@ -18,9 +18,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[rust] private mailbox: {}", mailbox.mail_id);
 
     // 2. Send 3 messages with different priorities
-    client.send(&mailbox.mail_id, b"urgent task", Priority::High).await?;
-    client.send(&mailbox.mail_id, b"normal task", Priority::Normal).await?;
-    client.send(&mailbox.mail_id, b"background task", Priority::Low).await?;
+    client
+        .send(&mailbox.mail_id, b"urgent task", Priority::High)
+        .await?;
+    client
+        .send(&mailbox.mail_id, b"normal task", Priority::Normal)
+        .await?;
+    client
+        .send(&mailbox.mail_id, b"background task", Priority::Low)
+        .await?;
     println!("[rust] sent 3 messages (high / normal / low)");
 
     // 3. Subscribe and print received messages
@@ -44,7 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let metas = client.list(&mailbox.mail_id).await?;
     println!("[rust] list: {} message(s) in mailbox", metas.len());
     for m in &metas {
-        println!("  msg_id={}  priority={}  ts={}", m.msg_id, m.priority, m.ts);
+        println!(
+            "  msg_id={}  priority={}  ts={}",
+            m.msg_id, m.priority, m.ts
+        );
     }
 
     // 5. Delete first message

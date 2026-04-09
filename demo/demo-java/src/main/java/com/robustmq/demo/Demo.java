@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * mq9 Java demo — connects to nats://localhost:4222 and runs the full scenario.
+ * mq9 Java demo — connects to nats://demo.robustmq.com:4222 and runs the full scenario.
  *
  * Run:
  *   cd demo/demo-java
@@ -17,7 +17,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class Demo {
     public static void main(String[] args) throws Exception {
-        MQ9Client client = new MQ9Client("nats://localhost:4222");
+        // demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+        MQ9Client client = new MQ9Client("nats://demo.robustmq.com:4222");
         client.connect();
         System.out.println("[java] connected");
 

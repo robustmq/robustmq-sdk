@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="RobustMQ.Mq9" Version="1.0.0" />
+    <PackageReference Include="RobustMQ.Mq9" Version="0.3.5" />
   </ItemGroup>
 
 </Project>

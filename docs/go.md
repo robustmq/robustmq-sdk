@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-    c := mq9.NewMQ9Client("nats://localhost:4222")
+    c := mq9.NewMQ9Client("nats://demo.robustmq.com:4222")
     c.Connect()
     defer c.Close()
 

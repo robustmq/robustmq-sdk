@@ -754,7 +754,7 @@ dependencies = [
 
 [[package]]
 name = "robustmq"
-version = "1.0.0"
+version = "0.3.5"
 dependencies = [
  "async-nats",
  "bytes",

@@ -1,1 +1,1 @@
-robustmq-mq9==1.0.0
+robustmq==0.3.5

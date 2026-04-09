@@ -10,7 +10,6 @@ import io.nats.client.Nats;
 import io.nats.client.Options;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -77,18 +76,18 @@ public class MQ9Client implements AutoCloseable {
 
     // ── Create ────────────────────────────────────────────────────────────────
 
-    public CompletableFuture<io.robustmq.mq9.Mailbox> create(int ttl) {
+    public CompletableFuture<com.robustmq.mq9.Mailbox> create(int ttl) {
         return createInternal(ttl, false, "", "");
     }
 
-    public CompletableFuture<io.robustmq.mq9.Mailbox> createPublic(int ttl, String name, String desc) {
+    public CompletableFuture<com.robustmq.mq9.Mailbox> createPublic(int ttl, String name, String desc) {
         if (name == null || name.isEmpty()) {
             return CompletableFuture.failedFuture(new MQ9Error("name is required when public=true"));
         }
         return createInternal(ttl, true, name, desc != null ? desc : "");
     }
 
-    private CompletableFuture<io.robustmq.mq9.Mailbox> createInternal(int ttl, boolean isPublic,
+    private CompletableFuture<com.robustmq.mq9.Mailbox> createInternal(int ttl, boolean isPublic,
                                                                         String name, String desc) {
         return CompletableFuture.supplyAsync(() -> {
             ObjectNode req = mapper.createObjectNode();
@@ -100,7 +99,7 @@ public class MQ9Client implements AutoCloseable {
             }
             JsonNode resp = doRequest(MAILBOX_CREATE, req);
             String mailId = resp.get("mail_id").asText();
-            return new io.robustmq.mq9.Mailbox(mailId, isPublic, name, desc);
+            return new com.robustmq.mq9.Mailbox(mailId, isPublic, name, desc);
         });
     }
 
@@ -129,7 +128,7 @@ public class MQ9Client implements AutoCloseable {
                     : PREFIX + ".MAILBOX.MSG." + mailId + ".*";
 
             Dispatcher dispatcher = nc.createDispatcher((Message msg) -> {
-                io.robustmq.mq9.Message m = parseIncoming(mailId, msg);
+                com.robustmq.mq9.Message m = parseIncoming(mailId, msg);
                 handler.onMessage(m);
             });
 
@@ -201,7 +200,7 @@ public class MQ9Client implements AutoCloseable {
         }
     }
 
-    private io.robustmq.mq9.Message parseIncoming(String mailId, Message raw) {
+    private com.robustmq.mq9.Message parseIncoming(String mailId, Message raw) {
         // Extract priority from subject last token
         String subject = raw.getSubject();
         String[] parts = subject.split("\\.");
@@ -218,14 +217,14 @@ public class MQ9Client implements AutoCloseable {
             // fall through to raw payload
         }
 
-        return new io.robustmq.mq9.Message("", mailId, priority, raw.getData());
+        return new com.robustmq.mq9.Message("", mailId, priority, raw.getData());
     }
 
-    private io.robustmq.mq9.Message parseMessageNode(String mailId, JsonNode node) {
+    private com.robustmq.mq9.Message parseMessageNode(String mailId, JsonNode node) {
         String msgId = node.path("msg_id").asText("");
         Priority priority = Priority.fromString(node.path("priority").asText("normal"));
         String rawPayload = node.path("payload").asText("");
         byte[] payload = rawPayload.isEmpty() ? new byte[0] : Base64.getDecoder().decode(rawPayload);
-        return new io.robustmq.mq9.Message(msgId, mailId, priority, payload);
+        return new com.robustmq.mq9.Message(msgId, mailId, priority, payload);
     }
 }

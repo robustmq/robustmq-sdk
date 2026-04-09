@@ -1,5 +1,5 @@
 /**
- * mq9 C# demo — connects to nats://localhost:4222 and runs the full scenario.
+ * mq9 C# demo — connects to nats://demo.robustmq.com:4222 and runs the full scenario.
  *
  * Run:
  *   cd demo/demo-csharp
@@ -9,7 +9,8 @@
 using System.Text;
 using RobustMQ.Mq9;
 
-await using var client = new MQ9Client("nats://localhost:4222");
+// demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+await using var client = new MQ9Client("nats://demo.robustmq.com:4222");
 await client.ConnectAsync();
 Console.WriteLine("[csharp] connected");
 

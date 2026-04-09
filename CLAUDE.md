@@ -1,10 +1,41 @@
 # RobustMQ SDK — Project Guide
 
-## What this repo is
+## What is RobustMQ
 
-Multi-language client SDK for RobustMQ, a unified messaging broker that supports MQTT, Kafka,
-NATS, AMQP, and mq9 on a shared storage layer. This SDK focuses on **mq9** — the AI-native
-async communication protocol built on top of NATS.
+RobustMQ is a **unified messaging platform written in Rust** — one binary, one broker, zero external dependencies.
+It natively runs MQTT, Kafka, NATS, AMQP, and mq9 on a **shared pluggable storage layer**.
+
+Core architecture (3-tier, fully decoupled):
+- **Broker** (stateless compute): protocol parsing, TCP/TLS/WebSocket/WSS/QUIC
+- **Meta Service**: Raft-based cluster coordination, replaces ZooKeeper
+- **Storage Engine**: pluggable — Memory / RocksDB / File Segment, S3 tiering
+
+Key differentiators vs Kafka/NATS:
+- Multi-protocol on one deployment (no bridging, no data silos)
+- Compute-storage separation → scale independently in seconds (not hours)
+- Rust: no GC pauses, predictable latency
+- mq9: AI-native async mailbox protocol (see below)
+
+## What this SDK is
+
+Multi-language client SDK for RobustMQ. Currently implements **mq9** — more protocols (MQTT, Kafka, AMQP)
+will be added as RobustMQ matures.
+
+**Package naming strategy (Method A — single SDK per language):**
+Each language ships one package that grows to cover all protocols via sub-modules.
+Users install one package and import the protocol they need.
+
+| Language   | Published package            | mq9 import/usage                              |
+| ---------- | ---------------------------- | --------------------------------------------- |
+| Python     | `robustmq` (PyPI)            | `from robustmq.mq9 import Client`             |
+| Go         | `robustmq-sdk/go` (git tag)  | `import "github.com/robustmq/robustmq-sdk/go/mq9"` |
+| JavaScript | `@robustmq/sdk` (npm)        | `import { MQ9Client } from '@robustmq/sdk/mq9'` |
+| Java       | `com.robustmq:robustmq`  | `import com.robustmq.mq9.*`                   |
+| Rust       | `robustmq` (crates.io)       | `use robustmq::mq9::MQ9Client`                |
+| C#         | `RobustMQ` (NuGet)           | `using RobustMQ.Mq9`                          |
+
+When new protocols are added (e.g. MQTT, Kafka), they live in sub-modules of the same package:
+`robustmq.mqtt`, `@robustmq/sdk/mqtt`, `com.robustmq.mqtt`, `robustmq::mqtt`, etc.
 
 The owner does not intervene in implementation details. Claude makes all technical decisions
 and drives the project forward autonomously.
@@ -13,29 +44,31 @@ and drives the project forward autonomously.
 
 ## Version management
 
-Source of truth: root `VERSION` file (currently `1.0.0`).
+Source of truth: root `VERSION` file (currently `0.3.5`).
 
 When bumping the version, update `VERSION` and all 6 build files in one commit:
 
 - Python: `python/pyproject.toml` + `python/robustmq/__init__.py`
 - Rust: `rust/Cargo.toml`
-- Go: git tag only (e.g. `v1.0.0`) — no file to update
+- Go: git tag only (e.g. `v0.3.5`) — no file to update
 - JavaScript: `javascript/package.json`
 - Java: `java/pom.xml`
 - C#: `csharp/RobustMQ.Mq9/RobustMQ.Mq9.csproj`
+
+Also update version references in `demo/`, `docs/`, and `README.md`.
 
 ---
 
 ## SDK implementation status
 
-| Language   | Package/Import    | Class       | NATS lib     | Status         |
-| ---------- | ----------------- | ----------- | ------------ | -------------- |
-| Python     | `robustmq.mq9`    | `MQ9Client` | `nats-py`    | Implemented    |
-| Rust       | `robustmq_mq9`    | `MQ9Client` | `async-nats` | Scaffolded     |
-| Go         | `mq9` (pkg)       | `MQ9Client` | `nats.go`    | Scaffolded     |
-| JavaScript | `@robustmq/mq9`   | `MQ9Client` | `nats` v2    | Scaffolded     |
-| Java       | `com.robustmq.mq9` | `MQ9Client` | `jnats`      | Scaffolded     |
-| C#         | `RobustMQ.Mq9`    | `MQ9Client` | `NATS.Net`   | Scaffolded     |
+| Language   | Package/Import          | Class       | NATS lib     | Status         |
+| ---------- | ----------------------- | ----------- | ------------ | -------------- |
+| Python     | `robustmq.mq9`          | `MQ9Client` | `nats-py`    | Implemented    |
+| Rust       | `robustmq::mq9`         | `MQ9Client` | `async-nats` | Scaffolded     |
+| Go         | `mq9` (pkg)             | `MQ9Client` | `nats.go`    | Scaffolded     |
+| JavaScript | `@robustmq/sdk/mq9`     | `MQ9Client` | `nats` v2    | Scaffolded     |
+| Java       | `com.robustmq.mq9`      | `MQ9Client` | `jnats`      | Scaffolded     |
+| C#         | `RobustMQ.Mq9` (ns)     | `MQ9Client` | `NATS.Net`   | Scaffolded     |
 
 Go constructor convention: `NewMQ9Client(...)` (struct, not class).
 
@@ -54,15 +87,23 @@ java/            # 🚧 Scaffolded only
 csharp/          # 🚧 Scaffolded only
 docs/
   mq9-protocol.md   # Authoritative protocol spec — read before implementing
-demo/            # End-to-end demo scripts, one per language
+demo/
+  demo-python/   # Standalone Python demo project
+  demo-go/       # Standalone Go demo project
+  demo-javascript/ # Standalone JavaScript demo project
+  demo-java/     # Standalone Java demo project (Maven)
+  demo-rust/     # Standalone Rust demo project
+  demo-csharp/   # Standalone C# demo project
 ```
 
 ---
 
 ## mq9 protocol
 
-mq9 gives AI agents a durable mailbox. Messages persist until TTL expires; senders and
-receivers do not need to be online simultaneously.
+mq9 is RobustMQ's AI-native async communication protocol. It gives AI agents a durable mailbox —
+messages persist until TTL expires; senders and receivers do not need to be online simultaneously.
+
+Built on top of NATS (transport layer), mq9 adds store-first semantics and priority queuing.
 
 ### Subject structure
 
@@ -137,7 +178,7 @@ Return types:
 ### All languages
 
 - NATS client is the only required runtime dependency
-- Use `request/reply` for CREATE, LIST, DELETE, PUBLIC.LIST
+- Use `request/reply` for CREATE, LIST, DELETE
 - Use plain `publish` for SEND (no reply needed)
 - Raise a typed `MQ9Error` (with `.code: int`) on server error responses
 - Tests mock the NATS connection — no live server required
@@ -182,15 +223,14 @@ Return types:
 
 ## Demo module
 
-Location: `demo/`  
-One script per language, all running the same scenario:
+Location: `demo/`
+Each language has a standalone project that imports the published SDK v0.3.5.
 
+All demos run the same scenario:
 1. Connect to `nats://localhost:4222`
 2. Create a private mailbox (TTL 60s)
 3. Send 3 messages (high / normal / low priority)
 4. Subscribe and print received messages
-5. List mailbox, delete one message
-6. Create a public mailbox and discover it via PUBLIC.LIST
+5. List mailbox metadata, delete one message
+6. Create a public mailbox
 7. Close connection
-
-Demo scripts are standalone — they import the SDK from the local source tree, not a published package.

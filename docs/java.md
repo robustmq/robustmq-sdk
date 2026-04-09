@@ -8,8 +8,8 @@
 ```xml
 <dependency>
   <groupId>com.robustmq</groupId>
-  <artifactId>robustmq-sdk</artifactId>
-  <version>1.0.0</version>
+  <artifactId>robustmq</artifactId>
+  <version>0.3.5</version>
 </dependency>
 ```
 
@@ -19,7 +19,7 @@
 import com.robustmq.mq9.*;
 import java.util.List;
 
-MQ9Client client = new MQ9Client("nats://localhost:4222");
+MQ9Client client = new MQ9Client("nats://demo.robustmq.com:4222");
 client.connect();
 
 // Create mailbox

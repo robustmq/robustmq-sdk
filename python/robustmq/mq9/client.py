@@ -6,7 +6,7 @@ import asyncio
 import base64
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Awaitable, Callable
 
@@ -225,7 +225,8 @@ class Client:
         if priority == "*":
             subject = _MAILBOX_MSG.format(mail_id=mail_id, priority="*")
         else:
-            subject = _MAILBOX_MSG.format(mail_id=mail_id, priority=Priority(priority).value)
+            p = Priority(priority).value
+            subject = _MAILBOX_MSG.format(mail_id=mail_id, priority=p)
 
         async def _handler(raw: Msg) -> None:
             try:
@@ -275,13 +276,17 @@ class Client:
 
     def _ensure_connected(self) -> None:
         if self._nc is None or self._nc.is_closed:
-            raise RuntimeError("Client is not connected. Call await client.connect() first.")
+            raise RuntimeError(
+                "Client is not connected. Call await client.connect() first."
+            )
 
     async def _request(self, subject: str, payload: dict[str, Any]) -> dict[str, Any]:
         self._ensure_connected()
         data = json.dumps(payload).encode()
         try:
-            reply = await self._nc.request(subject, data, timeout=self._request_timeout)  # type: ignore[union-attr]
+            reply = await self._nc.request(  # type: ignore[union-attr]
+                subject, data, timeout=self._request_timeout
+            )
         except nats.errors.NoRespondersError as exc:
             raise Mq9Error(f"No responders for subject: {subject}") from exc
         except asyncio.TimeoutError as exc:
@@ -317,6 +322,7 @@ class Client:
 # Module-level helpers
 # ------------------------------------------------------------------
 
+
 def _encode_payload(payload: bytes | str | dict[str, Any]) -> bytes:
     if isinstance(payload, bytes):
         return payload
@@ -349,7 +355,11 @@ def _parse_incoming(mail_id: str, raw: Msg) -> Message:
                 msg_id=envelope["msg_id"],
                 mail_id=mail_id,
                 priority=priority,
-                payload=base64.b64decode(envelope.get("payload", "")) if envelope.get("payload") else raw.data,
+                payload=(
+                    base64.b64decode(envelope["payload"])
+                    if envelope.get("payload")
+                    else raw.data
+                ),
             )
     except (json.JSONDecodeError, KeyError):
         pass

@@ -21,6 +21,7 @@ from robustmq.mq9.client import Mq9Error, _encode_payload, _parse_incoming
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_reply(data: dict[str, Any]) -> MagicMock:
     msg = MagicMock()
     msg.data = json.dumps(data).encode()
@@ -47,10 +48,13 @@ async def _inject_nc(client: Client) -> AsyncMock:
 # connect / close
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_connect_and_close():
     client = _make_client()
-    with patch("robustmq.mq9.client.nats.connect", new_callable=AsyncMock) as mock_connect:
+    with patch(
+        "robustmq.mq9.client.nats.connect", new_callable=AsyncMock
+    ) as mock_connect:
         nc = AsyncMock()
         nc.is_closed = False
         mock_connect.return_value = nc
@@ -66,7 +70,9 @@ async def test_connect_and_close():
 @pytest.mark.asyncio
 async def test_context_manager():
     client = _make_client()
-    with patch("robustmq.mq9.client.nats.connect", new_callable=AsyncMock) as mock_connect:
+    with patch(
+        "robustmq.mq9.client.nats.connect", new_callable=AsyncMock
+    ) as mock_connect:
         nc = AsyncMock()
         nc.is_closed = False
         mock_connect.return_value = nc
@@ -79,6 +85,7 @@ async def test_context_manager():
 # ---------------------------------------------------------------------------
 # create
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_create_private_mailbox():
@@ -105,7 +112,9 @@ async def test_create_public_mailbox():
     nc = await _inject_nc(client)
     nc.request = AsyncMock(return_value=_make_reply({"mail_id": "task.queue"}))
 
-    mailbox = await client.create(ttl=86400, public=True, name="task.queue", desc="Task queue")
+    mailbox = await client.create(
+        ttl=86400, public=True, name="task.queue", desc="Task queue"
+    )
 
     assert mailbox.mail_id == "task.queue"
     assert mailbox.public is True
@@ -143,6 +152,7 @@ async def test_create_server_error():
 # send
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_send_bytes_normal_priority():
     client = _make_client()
@@ -150,9 +160,7 @@ async def test_send_bytes_normal_priority():
 
     await client.send("m-001", b"hello", priority=Priority.NORMAL)
 
-    nc.publish.assert_awaited_once_with(
-        "$mq9.AI.MAILBOX.MSG.m-001.normal", b"hello"
-    )
+    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001.normal", b"hello")
 
 
 @pytest.mark.asyncio
@@ -190,6 +198,7 @@ async def test_send_invalid_priority():
 # ---------------------------------------------------------------------------
 # subscribe
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_subscribe_all_priorities():
@@ -270,6 +279,7 @@ async def test_subscribe_callback_invoked():
 # list
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_list_messages():
     client = _make_client()
@@ -298,7 +308,9 @@ async def test_list_messages():
 async def test_list_empty_mailbox():
     client = _make_client()
     nc = await _inject_nc(client)
-    nc.request = AsyncMock(return_value=_make_reply({"mail_id": "m-001", "messages": []}))
+    nc.request = AsyncMock(
+        return_value=_make_reply({"mail_id": "m-001", "messages": []})
+    )
 
     messages = await client.list("m-001")
     assert messages == []
@@ -307,6 +319,7 @@ async def test_list_empty_mailbox():
 # ---------------------------------------------------------------------------
 # delete
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_delete_message():
@@ -324,10 +337,9 @@ async def test_delete_message():
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_request_timeout_raises_mq9_error():
-    import nats.errors
-
     client = _make_client()
     nc = await _inject_nc(client)
     nc.request = AsyncMock(side_effect=asyncio.TimeoutError())
@@ -360,6 +372,7 @@ async def test_not_connected_raises_runtime_error():
 # _encode_payload helper
 # ---------------------------------------------------------------------------
 
+
 def test_encode_bytes():
     assert _encode_payload(b"raw") == b"raw"
 
@@ -377,14 +390,17 @@ def test_encode_dict():
 # _parse_incoming helper
 # ---------------------------------------------------------------------------
 
+
 def test_parse_incoming_with_envelope():
     raw = MagicMock()
     raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.high"
-    raw.data = json.dumps({
-        "msg_id": "x9",
-        "priority": "high",
-        "payload": base64.b64encode(b"data").decode(),
-    }).encode()
+    raw.data = json.dumps(
+        {
+            "msg_id": "x9",
+            "priority": "high",
+            "payload": base64.b64encode(b"data").decode(),
+        }
+    ).encode()
 
     msg = _parse_incoming("m-001", raw)
     assert msg.msg_id == "x9"

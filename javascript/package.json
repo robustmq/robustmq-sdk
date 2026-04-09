@@ -1,9 +1,21 @@
 {
-  "name": "@robustmq/mq9",
-  "version": "1.0.0",
-  "description": "RobustMQ JavaScript/TypeScript SDK — mq9 AI-native async messaging",
+  "name": "@robustmq/sdk",
+  "version": "0.3.5",
+  "description": "RobustMQ JavaScript/TypeScript SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./mq9": {
+      "require": "./dist/mq9/client.js",
+      "import": "./dist/mq9/client.js",
+      "types": "./dist/mq9/client.d.ts"
+    }
+  },
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsc",
@@ -15,6 +27,8 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.2",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
     "jest": "^30.3.0",
     "ts-jest": "^29.0.0",
     "typescript": "^6.0.2"

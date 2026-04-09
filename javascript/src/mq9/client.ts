@@ -2,11 +2,7 @@
  * mq9 client — AI-native async Agent mailbox communication over NATS.
  */
 
-import {
-  connect,
-  NatsConnection,
-  Subscription,
-} from "nats";
+import { connect, NatsConnection, Subscription } from "nats";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,9 +77,14 @@ export interface NatsTransport {
   request(
     subject: string,
     data: Uint8Array,
-    opts?: { timeout?: number }
+    opts?: { timeout?: number },
   ): Promise<{ data: Uint8Array }>;
-  subscribe(subject: string, opts?: { queue?: string }): AsyncIterable<{ subject: string; data: Uint8Array }> & { unsubscribe(): void };
+  subscribe(
+    subject: string,
+    opts?: { queue?: string },
+  ): AsyncIterable<{ subject: string; data: Uint8Array }> & {
+    unsubscribe(): void;
+  };
   drain(): Promise<void>;
 }
 
@@ -148,7 +149,7 @@ export class MQ9Client {
   async send(
     mailId: string,
     payload: Uint8Array | string | object,
-    priority: Priority = "normal"
+    priority: Priority = "normal",
   ): Promise<void> {
     this.ensureConnected();
     const subject = subjectMsg(mailId, priority);
@@ -161,7 +162,7 @@ export class MQ9Client {
   async subscribe(
     mailId: string,
     callback: (msg: Mq9Message) => Promise<void>,
-    opts: SubscribeOptions = {}
+    opts: SubscribeOptions = {},
   ): Promise<{ unsubscribe(): void }> {
     this.ensureConnected();
     const priority = opts.priority ?? "*";
@@ -217,7 +218,7 @@ export class MQ9Client {
 
   private async request(
     subject: string,
-    payload: object
+    payload: object,
   ): Promise<Record<string, unknown>> {
     this.ensureConnected();
     const data = encodePayload(payload);
@@ -230,9 +231,10 @@ export class MQ9Client {
       const msg = err instanceof Error ? err.message : String(err);
       throw new MQ9Error(`request failed: ${msg}`);
     }
-    const resp = JSON.parse(
-      Buffer.from(reply.data).toString("utf8")
-    ) as Record<string, unknown>;
+    const resp = JSON.parse(Buffer.from(reply.data).toString("utf8")) as Record<
+      string,
+      unknown
+    >;
     if (resp.error) {
       throw new MQ9Error(resp.error as string, (resp.code as number) ?? 0);
     }
@@ -254,7 +256,7 @@ class RealTransport implements NatsTransport {
   async request(
     subject: string,
     data: Uint8Array,
-    opts?: { timeout?: number }
+    opts?: { timeout?: number },
   ): Promise<{ data: Uint8Array }> {
     const msg = await this.nc.request(subject, data, {
       timeout: opts?.timeout ?? 5000,
@@ -264,7 +266,7 @@ class RealTransport implements NatsTransport {
 
   subscribe(
     subject: string,
-    opts?: { queue?: string }
+    opts?: { queue?: string },
   ): AsyncIterable<{ subject: string; data: Uint8Array }> & {
     unsubscribe(): void;
   } {
@@ -299,16 +301,17 @@ function encodePayload(payload: Uint8Array | string | object): Uint8Array {
 function parseIncoming(
   mailId: string,
   subject: string,
-  data: Uint8Array
+  data: Uint8Array,
 ): Mq9Message {
   const parts = subject.split(".");
   const priorityStr = parts[parts.length - 1] ?? "normal";
   const priority = toPriority(priorityStr);
 
   try {
-    const node = JSON.parse(
-      Buffer.from(data).toString("utf8")
-    ) as Record<string, unknown>;
+    const node = JSON.parse(Buffer.from(data).toString("utf8")) as Record<
+      string,
+      unknown
+    >;
     if (node.msg_id !== undefined) {
       return parseMessageNode(mailId, node);
     }
@@ -321,7 +324,7 @@ function parseIncoming(
 
 function parseMessageNode(
   mailId: string,
-  node: Record<string, unknown>
+  node: Record<string, unknown>,
 ): Mq9Message {
   const rawPayload = (node.payload as string) ?? "";
   const payload = rawPayload

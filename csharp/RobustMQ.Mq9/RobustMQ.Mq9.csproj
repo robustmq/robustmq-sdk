@@ -4,15 +4,22 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>RobustMQ</PackageId>
     <RootNamespace>RobustMQ.Mq9</RootNamespace>
-    <AssemblyName>RobustMQ.Mq9</AssemblyName>
-    <Version>1.0.0</Version>
-    <Description>RobustMQ C# SDK — mq9 AI-native async messaging</Description>
+    <AssemblyName>RobustMQ</AssemblyName>
+    <Version>0.3.5</Version>
+    <Description>RobustMQ SDK — unified messaging for AI, IoT, and data pipelines</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NATS.Net" Version="2.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>RobustMQ.Mq9.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

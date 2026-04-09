@@ -1,6 +1,6 @@
 [package]
 name = "demo-rust"
-version = "1.0.0"
+version = "0.3.5"
 edition = "2021"
 
 [[bin]]
@@ -8,5 +8,5 @@ name = "demo"
 path = "src/main.rs"
 
 [dependencies]
-robustmq = { version = "1.0.0", features = ["mq9"] }
+robustmq = { version = "0.3.5", features = ["mq9"] }
 tokio = { version = "1", features = ["full"] }

@@ -1,4 +1,4 @@
-// mq9 Go demo — connects to nats://localhost:4222 and runs the full scenario.
+// mq9 Go demo — connects to nats://demo.robustmq.com:4222 and runs the full scenario.
 //
 // Run:
 //
@@ -15,7 +15,8 @@ import (
 )
 
 func main() {
-	c := mq9.NewMQ9Client("nats://localhost:4222")
+	// demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+	c := mq9.NewMQ9Client("nats://demo.robustmq.com:4222")
 	if err := c.Connect(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

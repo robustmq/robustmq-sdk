@@ -34,12 +34,12 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 
 | Language | Package | Version | Install |
 |----------|---------|---------|---------|
-| Python | `robustmq-mq9` | 1.0.0 | `pip install robustmq-mq9` |
-| Go | `github.com/robustmq/robustmq-sdk/go` | v1.0.0 | `go get github.com/robustmq/robustmq-sdk/go` |
-| JavaScript | `@robustmq/mq9` | 1.0.0 | `npm install @robustmq/mq9` |
-| Java | `com.robustmq:robustmq-sdk` | 1.0.0 | Maven / Gradle (see below) |
-| Rust | `robustmq` | 1.0.0 | `cargo add robustmq` |
-| C# | `RobustMQ.Mq9` | 1.0.0 | `dotnet add package RobustMQ.Mq9` |
+| Python | `robustmq` | 0.3.5 | `pip install robustmq` |
+| Go | `github.com/robustmq/robustmq-sdk/go` | v0.3.5 | `go get github.com/robustmq/robustmq-sdk/go` |
+| JavaScript | `@robustmq/sdk` | 0.3.5 | `npm install @robustmq/sdk` |
+| Java | `com.robustmq:robustmq` | 0.3.5 | Maven / Gradle (see below) |
+| Rust | `robustmq` | 0.3.5 | `cargo add robustmq` |
+| C# | `RobustMQ` | 0.3.5 | `dotnet add package RobustMQ` |
 
 ---
 
@@ -47,12 +47,12 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 
 **Python**
 ```bash
-pip install robustmq-mq9
+pip install robustmq
 ```
 ```python
 from robustmq.mq9 import Client, Priority
 
-async with Client("nats://localhost:4222") as client:
+async with Client("nats://demo.robustmq.com:4222") as client:
     mailbox = await client.create(ttl=3600)
     await client.send(mailbox.mail_id, b"hello", priority=Priority.NORMAL)
 
@@ -69,7 +69,7 @@ go get github.com/robustmq/robustmq-sdk/go
 ```go
 import "github.com/robustmq/robustmq-sdk/go/mq9"
 
-c := mq9.NewMQ9Client("nats://localhost:4222")
+c := mq9.NewMQ9Client("nats://demo.robustmq.com:4222")
 c.Connect()
 mailbox, _ := c.Create(3600)
 c.Send(mailbox.MailID, []byte("hello"), mq9.Normal)
@@ -77,12 +77,12 @@ c.Send(mailbox.MailID, []byte("hello"), mq9.Normal)
 
 **JavaScript / TypeScript**
 ```bash
-npm install @robustmq/mq9
+npm install @robustmq/sdk
 ```
 ```typescript
-import { MQ9Client } from "@robustmq/mq9";
+import { MQ9Client } from "@robustmq/sdk/mq9";
 
-const client = new MQ9Client({ server: "nats://localhost:4222" });
+const client = new MQ9Client({ server: "nats://demo.robustmq.com:4222" });
 await client.connect();
 const mailbox = await client.create({ ttl: 3600 });
 await client.send(mailbox.mailId, "hello", "normal");
@@ -92,14 +92,14 @@ await client.send(mailbox.mailId, "hello", "normal");
 ```xml
 <dependency>
   <groupId>com.robustmq</groupId>
-  <artifactId>robustmq-sdk</artifactId>
-  <version>1.0.0</version>
+  <artifactId>robustmq</artifactId>
+  <version>0.3.5</version>
 </dependency>
 ```
 ```java
 import com.robustmq.mq9.*;
 
-MQ9Client client = new MQ9Client("nats://localhost:4222");
+MQ9Client client = new MQ9Client("nats://demo.robustmq.com:4222");
 client.connect();
 Mailbox mailbox = client.create(3600).get();
 client.send(mailbox.getMailId(), "hello".getBytes(), Priority.NORMAL).get();
@@ -107,31 +107,31 @@ client.send(mailbox.getMailId(), "hello".getBytes(), Priority.NORMAL).get();
 
 **Java (Gradle)**
 ```groovy
-implementation 'com.robustmq:robustmq-sdk:1.0.0'
+implementation 'com.robustmq:robustmq:0.3.5'
 ```
 
 **Rust**
 ```toml
 [dependencies]
-robustmq = "1.0"
+robustmq = "0.3"
 tokio = { version = "1", features = ["full"] }
 ```
 ```rust
 use robustmq::mq9::{MQ9Client, Priority};
 
-let client = MQ9Client::connect("nats://localhost:4222").await?;
+let client = MQ9Client::connect("nats://demo.robustmq.com:4222").await?;
 let mailbox = client.create(3600, false, "", "").await?;
 client.send(&mailbox.mail_id, b"hello", Priority::Normal).await?;
 ```
 
 **C#**
 ```bash
-dotnet add package RobustMQ.Mq9
+dotnet add package RobustMQ
 ```
 ```csharp
 using RobustMQ.Mq9;
 
-await using var client = new MQ9Client("nats://localhost:4222");
+await using var client = new MQ9Client("nats://demo.robustmq.com:4222");
 await client.ConnectAsync();
 var mailbox = await client.CreateAsync(3600);
 await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
@@ -154,7 +154,7 @@ await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
 
 ## Running the demo
 
-Each demo is a standalone project that connects to `nats://localhost:4222` and runs the same scenario:
+Each demo is a standalone project that connects to `nats://demo.robustmq.com:4222` and runs the same scenario:
 1. Create a private mailbox (TTL 60s)
 2. Send 3 messages (high / normal / low priority)
 3. Subscribe and print received messages
@@ -200,7 +200,7 @@ demo/
   demo-java/       # Java standalone demo project (Maven)
   demo-rust/       # Rust standalone demo project
   demo-csharp/     # C# standalone demo project
-VERSION            # Canonical version (currently 1.0.0)
+VERSION            # Canonical version (currently 0.3.5)
 ```
 
 ---

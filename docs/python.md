@@ -6,7 +6,7 @@
 ## Install
 
 ```bash
-pip install robustmq-mq9
+pip install robustmq
 ```
 
 ## Quick start
@@ -16,7 +16,7 @@ import asyncio
 from robustmq.mq9 import Client, Priority
 
 async def main():
-    async with Client(server="nats://localhost:4222") as client:
+    async with Client(server="nats://demo.robustmq.com:4222") as client:
 
         # Create mailbox
         mailbox = await client.create(ttl=3600)
@@ -45,7 +45,7 @@ asyncio.run(main())
 ## API
 
 ```python
-Client(server="nats://localhost:4222", *, max_reconnect_attempts=10,
+Client(server="nats://demo.robustmq.com:4222", *, max_reconnect_attempts=10,
        reconnect_time_wait=2.0, request_timeout=5.0)
 
 await client.connect()
