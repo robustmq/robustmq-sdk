@@ -1,13 +1,4 @@
-/**
- * mq9 Java demo — connects to nats://localhost:4222 and runs the full scenario.
- *
- * Run:
- *   cd java && mvn compile
- *   mvn exec:java -Dexec.mainClass=Demo -Dexec.classpathScope=compile \
- *       -Dexec.args="" -pl . 2>/dev/null
- *
- * Or compile manually and run with the fat jar.
- */
+package io.robustmq.demo;
 
 import io.robustmq.mq9.Mailbox;
 import io.robustmq.mq9.MQ9Client;
@@ -17,6 +8,13 @@ import io.robustmq.mq9.Priority;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * mq9 Java demo — connects to nats://localhost:4222 and runs the full scenario.
+ *
+ * Run:
+ *   cd demo/demo-java
+ *   mvn compile exec:java
+ */
 public class Demo {
     public static void main(String[] args) throws Exception {
         MQ9Client client = new MQ9Client("nats://localhost:4222");

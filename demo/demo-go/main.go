@@ -1,11 +1,9 @@
-//go:build ignore
-
 // mq9 Go demo — connects to nats://localhost:4222 and runs the full scenario.
 //
 // Run:
 //
-//	cd go && go run ../demo/demo.go
-
+//	cd demo/demo-go
+//	go run .
 package main
 
 import (

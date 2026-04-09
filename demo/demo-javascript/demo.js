@@ -1,13 +1,15 @@
 /**
- * mq9 JavaScript/TypeScript demo — connects to nats://localhost:4222.
+ * mq9 JavaScript demo — connects to nats://localhost:4222 and runs the full scenario.
  *
  * Run:
- *   cd javascript && npm install && npx ts-node ../demo/demo.ts
+ *   cd demo/demo-javascript
+ *   npm install
+ *   npm start
  */
 
-import { MQ9Client } from "../javascript/src/mq9/client.js";
+const { MQ9Client } = require("@robustmq/mq9");
 
-async function main(): Promise<void> {
+async function main() {
   const client = new MQ9Client({ server: "nats://localhost:4222" });
   await client.connect();
   console.log("[js] connected");

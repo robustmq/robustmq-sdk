@@ -1,9 +1,8 @@
 // mq9 Rust demo — connects to nats://localhost:4222 and runs the full scenario.
 //
 // Run:
-//   cd rust && cargo run --example demo
-//
-// (Copy this file to rust/examples/demo.rs)
+//   cd demo/demo-rust
+//   cargo run
 
 use robustmq::mq9::{MQ9Client, Priority};
 use tokio::time::{sleep, Duration};
