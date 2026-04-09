@@ -192,15 +192,16 @@ public class MQ9ClientTests
     // ── close ─────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task DisposeAsync_DrainsCalled()
+    public async Task DisposeAsync_ClearsConnection()
     {
         var mock = Substitute.For<INatsConnection>();
-        mock.DisposeAsync().Returns(ValueTask.CompletedTask);
         var client = ClientWithMock(mock);
 
         await client.DisposeAsync();
 
-        await mock.Received(1).DisposeAsync();
+        // After dispose, any operation should throw not-connected
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.ListAsync("m-001"));
     }
 
     // ── list ──────────────────────────────────────────────────────────────────
