@@ -198,7 +198,7 @@ class MQ9ClientTest {
         // nc is already injected; close should attempt drain
         // We mock drain to return a CompletableFuture so it doesn't block
         when(mockNc.drain(any(Duration.class)))
-                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(mockNc));
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
 
         assertDoesNotThrow(() -> client.close());
 
