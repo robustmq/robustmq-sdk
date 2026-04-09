@@ -51,6 +51,7 @@ public class MQ9Client : IAsyncDisposable
     {
         if (_nc is NatsConnection nc)
             await nc.DisposeAsync();
+        _nc = null;
     }
 
     // ── Create ────────────────────────────────────────────────────────────────

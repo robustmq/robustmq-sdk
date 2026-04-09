@@ -9,7 +9,7 @@ use tokio::time::{sleep, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+    // demo.robustmq.com is a public RobustMQ service for testing. Replace with your own server address if needed.
     let client = MQ9Client::connect("nats://demo.robustmq.com:4222").await?;
     println!("[rust] connected");
 

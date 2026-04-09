@@ -117,6 +117,93 @@ public class MQ9ClientTests
             Arg.Any<byte[]>());
     }
 
+    [Fact]
+    public async Task Send_LowPriority_CorrectSubject()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var client = ClientWithMock(mock);
+
+        await client.SendAsync("m-001", "bg"u8.ToArray(), Priority.Low);
+
+        await mock.Received(1).PublishAsync(
+            "$mq9.AI.MAILBOX.MSG.m-001.low",
+            Arg.Any<byte[]>());
+    }
+
+    // ── subscribe ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Subscribe_AllPriorities_UsesWildcardSubject()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var capturedSubject = "";
+        mock.SubscribeCoreAsync<byte[]>(Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                capturedSubject = callInfo.ArgAt<string>(0);
+                return ValueTask.FromResult(Substitute.For<INatsSub<byte[]>>());
+            });
+        var client = ClientWithMock(mock);
+
+        await using var _ = await client.SubscribeAsync("m-001", async _ => await Task.CompletedTask);
+
+        Assert.Equal("$mq9.AI.MAILBOX.MSG.m-001.*", capturedSubject);
+    }
+
+    [Fact]
+    public async Task Subscribe_SinglePriority_UsesSpecificSubject()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var capturedSubject = "";
+        mock.SubscribeCoreAsync<byte[]>(Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                capturedSubject = callInfo.ArgAt<string>(0);
+                return ValueTask.FromResult(Substitute.For<INatsSub<byte[]>>());
+            });
+        var client = ClientWithMock(mock);
+
+        await using var _ = await client.SubscribeAsync("m-001", async _ => await Task.CompletedTask,
+            priority: Priority.High);
+
+        Assert.Equal("$mq9.AI.MAILBOX.MSG.m-001.high", capturedSubject);
+    }
+
+    [Fact]
+    public async Task Subscribe_QueueGroup_ForwardsGroup()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var capturedQueue = "";
+        mock.SubscribeCoreAsync<byte[]>(Arg.Any<string>(), queueGroup: Arg.Any<string>(),
+                cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                capturedQueue = callInfo.ArgAt<string>(1);
+                return ValueTask.FromResult(Substitute.For<INatsSub<byte[]>>());
+            });
+        var client = ClientWithMock(mock);
+
+        await using var _ = await client.SubscribeAsync("m-001", async _ => await Task.CompletedTask,
+            queueGroup: "workers");
+
+        Assert.Equal("workers", capturedQueue);
+    }
+
+    // ── close ─────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DisposeAsync_ClearsConnection()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var client = ClientWithMock(mock);
+
+        await client.DisposeAsync();
+
+        // After dispose, any operation should throw not-connected
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.ListAsync("m-001"));
+    }
+
     // ── list ──────────────────────────────────────────────────────────────────
 
     [Fact]

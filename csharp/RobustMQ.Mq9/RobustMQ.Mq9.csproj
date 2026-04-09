@@ -10,10 +10,20 @@
     <Version>0.3.5</Version>
     <Description>RobustMQ SDK — unified messaging for AI, IoT, and data pipelines</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/robustmq/robustmq-sdk</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/robustmq/robustmq-sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>RobustMQ</Authors>
+    <PackageTags>messaging;mq9;nats;ai;iot</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NATS.Net" Version="2.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

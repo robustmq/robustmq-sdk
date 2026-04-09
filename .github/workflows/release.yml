@@ -49,6 +49,7 @@ jobs:
           check "JavaScript" "javascript/package.json"                   "\"version\": \"${VERSION}\""
           check "Java"       "java/pom.xml"                              "<version>${VERSION}</version>"
           check "C#"         "csharp/RobustMQ.Mq9/RobustMQ.Mq9.csproj" "<Version>${VERSION}</Version>"
+          check "langchain-mq9" "langchain-mq9/pyproject.toml"          "version = \"${VERSION}\""
           echo "All build files verified: ${VERSION}"
 
       - name: Create and push git tag
@@ -185,12 +186,31 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn --no-transfer-progress deploy -P release
 
+  release-langchain-mq9:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tools
+        run: pip install build twine
+      - name: Build
+        working-directory: langchain-mq9
+        run: python -m build
+      - name: Publish to PyPI
+        working-directory: langchain-mq9
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*
+
   release-csharp:
     needs: prepare
-    if: false  # disabled: enable when NuGet Trusted Publishing is configured
     runs-on: ubuntu-22.04
-    permissions:
-      id-token: write  # required for NuGet Trusted Publishing
     steps:
       - uses: actions/checkout@v4
         with:
@@ -204,13 +224,15 @@ jobs:
       - name: Pack
         working-directory: csharp/RobustMQ.Mq9
         run: dotnet pack -c Release --no-build -o ../nupkg
-      - name: Publish to NuGet (Trusted Publishing)
+      - name: Publish to NuGet
         working-directory: csharp
-        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push nupkg/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
 
   # ── Step 3: summary ─────────────────────────────────────────────────────────
   summary:
-    needs: [prepare, release-python, release-rust, release-go, release-javascript, release-java, release-csharp]
+    needs: [prepare, release-python, release-rust, release-go, release-javascript, release-java, release-csharp, release-langchain-mq9]
     runs-on: ubuntu-22.04
     if: always()
     steps:
@@ -228,6 +250,7 @@ jobs:
           | JavaScript | npm | ${{ needs.release-javascript.result }} |
           | Java | Maven Central | ${{ needs.release-java.result }} |
           | C# | NuGet | ${{ needs.release-csharp.result }} |
+          | langchain-mq9 | PyPI | ${{ needs.release-langchain-mq9.result }} |
 
           GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${VERSION}
           EOF

@@ -101,6 +101,13 @@ class MQ9ClientTest {
         verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.high", "urgent".getBytes());
     }
 
+    @Test
+    void sendLowPriority() throws Exception {
+        client.send("m-001", "bg".getBytes(), Priority.LOW).get();
+
+        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.low", "bg".getBytes());
+    }
+
     // ── list ──────────────────────────────────────────────────────────────────
 
     @Test
@@ -147,6 +154,55 @@ class MQ9ClientTest {
         ExecutionException ex = assertThrows(ExecutionException.class,
                 () -> disconnected.list("m-001").get());
         assertInstanceOf(RuntimeException.class, ex.getCause());
+    }
+
+    // ── subscribe ─────────────────────────────────────────────────────────────
+
+    @Test
+    void subscribeAllPriorities() throws Exception {
+        Dispatcher dispatcher = mock(Dispatcher.class);
+        when(dispatcher.subscribe(anyString())).thenReturn(dispatcher);
+        when(mockNc.createDispatcher(any())).thenReturn(dispatcher);
+
+        client.subscribe("m-001", msg -> {}, null, "").get();
+
+        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001.*");
+    }
+
+    @Test
+    void subscribeSinglePriority() throws Exception {
+        Dispatcher dispatcher = mock(Dispatcher.class);
+        when(dispatcher.subscribe(anyString())).thenReturn(dispatcher);
+        when(mockNc.createDispatcher(any())).thenReturn(dispatcher);
+
+        client.subscribe("m-001", msg -> {}, Priority.HIGH, "").get();
+
+        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001.high");
+    }
+
+    @Test
+    void subscribeQueueGroup() throws Exception {
+        Dispatcher dispatcher = mock(Dispatcher.class);
+        when(dispatcher.subscribe(anyString(), anyString())).thenReturn(dispatcher);
+        when(mockNc.createDispatcher(any())).thenReturn(dispatcher);
+
+        client.subscribe("m-001", msg -> {}, null, "workers").get();
+
+        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001.*", "workers");
+    }
+
+    // ── close ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void closeDrainsConnection() throws Exception {
+        // nc is already injected; close should attempt drain
+        // We mock drain to return a CompletableFuture so it doesn't block
+        when(mockNc.drain(any(Duration.class)))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
+
+        assertDoesNotThrow(() -> client.close());
+
+        verify(mockNc).drain(any(Duration.class));
     }
 
     // ── timeout ───────────────────────────────────────────────────────────────

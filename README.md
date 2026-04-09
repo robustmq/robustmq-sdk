@@ -41,6 +41,12 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 | Rust | `robustmq` | 0.3.5 | `cargo add robustmq` |
 | C# | `RobustMQ` | 0.3.5 | `dotnet add package RobustMQ` |
 
+### Integrations
+
+| Package | Description | Install |
+|---------|-------------|---------|
+| `langchain-mq9` | LangChain tools for mq9 — give your Agents a persistent async inbox | `pip install langchain-mq9` |
+
 ---
 
 ## Quick start
@@ -149,6 +155,7 @@ await client.SendAsync(mailbox.MailId, "hello"u8.ToArray(), Priority.Normal);
 | Java | [docs/java.md](docs/java.md) | [demo/demo-java/](demo/demo-java/) |
 | C# | [docs/csharp.md](docs/csharp.md) | [demo/demo-csharp/](demo/demo-csharp/) |
 | Rust | [docs/rust.md](docs/rust.md) | [demo/demo-rust/](demo/demo-rust/) |
+| langchain-mq9 | [docs/langchain-mq9.md](docs/langchain-mq9.md) | [demo/demo-langchain-mq9/](demo/demo-langchain-mq9/) |
 
 ---
 
@@ -179,6 +186,9 @@ cd demo/demo-rust && cargo run
 
 # C#
 cd demo/demo-csharp && dotnet run
+
+# langchain-mq9
+cd demo/demo-langchain-mq9 && pip install -r requirements.txt && python demo.py
 ```
 
 ---
@@ -186,21 +196,23 @@ cd demo/demo-csharp && dotnet run
 ## Repository layout
 
 ```
-python/            # Python SDK
-go/                # Go SDK
-javascript/        # JavaScript/TypeScript SDK
-java/              # Java SDK
-csharp/            # C# SDK
-rust/              # Rust SDK
-docs/              # SDK docs + protocol spec
+python/                   # Python SDK
+go/                       # Go SDK
+javascript/               # JavaScript/TypeScript SDK
+java/                     # Java SDK
+csharp/                   # C# SDK
+rust/                     # Rust SDK
+langchain-mq9/            # LangChain integration package
+docs/                     # SDK docs + protocol spec
 demo/
-  demo-python/     # Python standalone demo project
-  demo-go/         # Go standalone demo project
-  demo-javascript/ # JavaScript standalone demo project
-  demo-java/       # Java standalone demo project (Maven)
-  demo-rust/       # Rust standalone demo project
-  demo-csharp/     # C# standalone demo project
-VERSION            # Canonical version (currently 0.3.5)
+  demo-python/            # Python standalone demo
+  demo-go/                # Go standalone demo
+  demo-javascript/        # JavaScript standalone demo
+  demo-java/              # Java standalone demo (Maven)
+  demo-rust/              # Rust standalone demo
+  demo-csharp/            # C# standalone demo
+  demo-langchain-mq9/     # langchain-mq9 demo
+VERSION                   # Canonical version (currently 0.3.5)
 ```
 
 ---

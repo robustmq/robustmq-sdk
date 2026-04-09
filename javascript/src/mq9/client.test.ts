@@ -141,6 +141,149 @@ describe("send", () => {
       task: "summarize",
     });
   });
+
+  test("publishes to low priority subject", async () => {
+    const t = mockTransport();
+    const client = clientWith(t);
+    await client.send("m-001", Buffer.from("bg"), "low");
+
+    expect(t.publish).toHaveBeenCalledWith(
+      "$mq9.AI.MAILBOX.MSG.m-001.low",
+      expect.any(Uint8Array),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// subscribe
+// ---------------------------------------------------------------------------
+
+function makeSubscription(
+  messages: Array<{ subject: string; data: Uint8Array }> = [],
+) {
+  let unsubscribed = false;
+  const iterable = {
+    [Symbol.asyncIterator]() {
+      let i = 0;
+      return {
+        async next() {
+          if (unsubscribed || i >= messages.length) {
+            return { value: undefined, done: true as const };
+          }
+          return { value: messages[i++], done: false as const };
+        },
+      };
+    },
+    unsubscribe() {
+      unsubscribed = true;
+    },
+  };
+  return iterable;
+}
+
+describe("subscribe", () => {
+  test("all priorities uses wildcard subject", async () => {
+    let capturedSubject = "";
+    const t = mockTransport({
+      subscribe: jest.fn((subject: string) => {
+        capturedSubject = subject;
+        return makeSubscription();
+      }),
+    });
+    const client = clientWith(t);
+    await client.subscribe("m-001", async () => {});
+
+    expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001.*");
+  });
+
+  test("single priority uses specific subject", async () => {
+    let capturedSubject = "";
+    const t = mockTransport({
+      subscribe: jest.fn((subject: string) => {
+        capturedSubject = subject;
+        return makeSubscription();
+      }),
+    });
+    const client = clientWith(t);
+    await client.subscribe("m-001", async () => {}, { priority: "high" });
+
+    expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001.high");
+  });
+
+  test("queue group is forwarded", async () => {
+    let capturedOpts: { queue?: string } = {};
+    const t = mockTransport({
+      subscribe: jest.fn((_subject: string, opts: { queue?: string }) => {
+        capturedOpts = opts ?? {};
+        return makeSubscription();
+      }),
+    });
+    const client = clientWith(t);
+    await client.subscribe("m-001", async () => {}, { queueGroup: "workers" });
+
+    expect(capturedOpts.queue).toBe("workers");
+  });
+
+  test("callback invoked with parsed message", async () => {
+    const payload = Buffer.from("hello").toString("base64");
+    const raw = {
+      subject: "$mq9.AI.MAILBOX.MSG.m-001.normal",
+      data: Buffer.from(
+        JSON.stringify({ msg_id: "x1", priority: "normal", payload }),
+      ),
+    };
+    const t = mockTransport({
+      subscribe: jest.fn(() => makeSubscription([raw])),
+    });
+    const client = clientWith(t);
+
+    const received: unknown[] = [];
+    const sub = await client.subscribe("m-001", async (msg) => {
+      received.push(msg);
+    });
+
+    // give the background loop a tick to process
+    await new Promise((r) => setTimeout(r, 10));
+    sub.unsubscribe();
+
+    expect(received).toHaveLength(1);
+    expect((received[0] as { msgId: string }).msgId).toBe("x1");
+    expect(
+      Buffer.from((received[0] as { payload: Uint8Array }).payload).toString(),
+    ).toBe("hello");
+  });
+
+  test("unsubscribe stops delivery", async () => {
+    const t = mockTransport({
+      subscribe: jest.fn(() => makeSubscription()),
+    });
+    const client = clientWith(t);
+    const sub = await client.subscribe("m-001", async () => {});
+    expect(() => sub.unsubscribe()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// close
+// ---------------------------------------------------------------------------
+
+describe("close", () => {
+  test("drains the transport", async () => {
+    const t = mockTransport();
+    const client = clientWith(t);
+    await client.close();
+
+    expect(t.drain).toHaveBeenCalledTimes(1);
+  });
+
+  test("sets transport to null", async () => {
+    const t = mockTransport();
+    const client = clientWith(t);
+    await client.close();
+
+    // after close, any operation should throw not-connected
+    await expect(client.list("m-001")).rejects.toThrow(MQ9Error);
+  });
 });
 
 // ---------------------------------------------------------------------------

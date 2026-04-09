@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class Demo {
     public static void main(String[] args) throws Exception {
-        // demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+        // demo.robustmq.com is a public RobustMQ service for testing. Replace with your own server address if needed.
         MQ9Client client = new MQ9Client("nats://demo.robustmq.com:4222");
         client.connect();
         System.out.println("[java] connected");

@@ -14,9 +14,11 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockConn struct {
-	// requestFn is called on each Request; if nil, returns an error
-	requestFn func(subject string, data []byte) ([]byte, error)
-	published []publishedMsg
+	requestFn        func(subject string, data []byte) ([]byte, error)
+	subscribeFn      func(subject string, cb nats.MsgHandler) (*nats.Subscription, error)
+	queueSubscribeFn func(subject, queue string, cb nats.MsgHandler) (*nats.Subscription, error)
+	drainFn          func() error
+	published        []publishedMsg
 }
 
 type publishedMsg struct {
@@ -40,15 +42,26 @@ func (m *mockConn) Request(subject string, data []byte, _ time.Duration) (*nats.
 	return &nats.Msg{Data: resp}, nil
 }
 
-func (m *mockConn) Subscribe(_ string, _ nats.MsgHandler) (*nats.Subscription, error) {
+func (m *mockConn) Subscribe(subject string, cb nats.MsgHandler) (*nats.Subscription, error) {
+	if m.subscribeFn != nil {
+		return m.subscribeFn(subject, cb)
+	}
 	return &nats.Subscription{}, nil
 }
 
-func (m *mockConn) QueueSubscribe(_ string, _ string, _ nats.MsgHandler) (*nats.Subscription, error) {
+func (m *mockConn) QueueSubscribe(subject, queue string, cb nats.MsgHandler) (*nats.Subscription, error) {
+	if m.queueSubscribeFn != nil {
+		return m.queueSubscribeFn(subject, queue, cb)
+	}
 	return &nats.Subscription{}, nil
 }
 
-func (m *mockConn) Drain() error { return nil }
+func (m *mockConn) Drain() error {
+	if m.drainFn != nil {
+		return m.drainFn()
+	}
+	return nil
+}
 
 // jsonReply marshals v and returns it as a NATS reply.
 func jsonReply(v any) ([]byte, error) {
@@ -239,6 +252,144 @@ func TestDelete(t *testing.T) {
 	want := "$mq9.AI.MAILBOX.DELETE.m-001.msg-42"
 	if calledSubject != want {
 		t.Errorf("got subject %q, want %q", calledSubject, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests — Send (low priority)
+// ---------------------------------------------------------------------------
+
+func TestSend_LowPriority(t *testing.T) {
+	mock := &mockConn{}
+	c := newClient(mock)
+	_ = c.Send("m-001", []byte("bg"), Low)
+	want := "$mq9.AI.MAILBOX.MSG.m-001.low"
+	if mock.published[0].Subject != want {
+		t.Errorf("got %q, want %q", mock.published[0].Subject, want)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests — Subscribe
+// ---------------------------------------------------------------------------
+
+func TestSubscribe_AllPriorities(t *testing.T) {
+	var capturedSubject string
+	mock := &mockConn{
+		subscribeFn: func(subject string, _ nats.MsgHandler) (*nats.Subscription, error) {
+			capturedSubject = subject
+			return &nats.Subscription{}, nil
+		},
+	}
+	c := newClient(mock)
+	_, err := c.Subscribe("m-001", func(_ *Message) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "$mq9.AI.MAILBOX.MSG.m-001.*"
+	if capturedSubject != want {
+		t.Errorf("got subject %q, want %q", capturedSubject, want)
+	}
+}
+
+func TestSubscribe_SinglePriority(t *testing.T) {
+	var capturedSubject string
+	mock := &mockConn{
+		subscribeFn: func(subject string, _ nats.MsgHandler) (*nats.Subscription, error) {
+			capturedSubject = subject
+			return &nats.Subscription{}, nil
+		},
+	}
+	c := newClient(mock)
+	_, err := c.Subscribe("m-001", func(_ *Message) {}, WithPriority(High))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "$mq9.AI.MAILBOX.MSG.m-001.high"
+	if capturedSubject != want {
+		t.Errorf("got subject %q, want %q", capturedSubject, want)
+	}
+}
+
+func TestSubscribe_QueueGroup(t *testing.T) {
+	var capturedQueue string
+	mock := &mockConn{
+		queueSubscribeFn: func(_ string, queue string, _ nats.MsgHandler) (*nats.Subscription, error) {
+			capturedQueue = queue
+			return &nats.Subscription{}, nil
+		},
+	}
+	c := newClient(mock)
+	_, err := c.Subscribe("m-001", func(_ *Message) {}, WithQueueGroup("workers"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if capturedQueue != "workers" {
+		t.Errorf("got queue %q, want %q", capturedQueue, "workers")
+	}
+}
+
+func TestSubscribe_CallbackInvoked(t *testing.T) {
+	var capturedHandler nats.MsgHandler
+	mock := &mockConn{
+		subscribeFn: func(_ string, cb nats.MsgHandler) (*nats.Subscription, error) {
+			capturedHandler = cb
+			return &nats.Subscription{}, nil
+		},
+	}
+	c := newClient(mock)
+
+	received := make([]*Message, 0)
+	_, err := c.Subscribe("m-001", func(msg *Message) {
+		received = append(received, msg)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate server pushing a raw NATS message
+	raw := &nats.Msg{
+		Subject: "$mq9.AI.MAILBOX.MSG.m-001.normal",
+		Data:    []byte(`{"msg_id":"x1","priority":"normal","payload":"aGVsbG8="}`),
+	}
+	capturedHandler(raw)
+
+	if len(received) != 1 {
+		t.Fatalf("expected 1 message, got %d", len(received))
+	}
+	if received[0].MsgID != "x1" {
+		t.Errorf("got msg_id %q, want %q", received[0].MsgID, "x1")
+	}
+	if string(received[0].Payload) != "hello" {
+		t.Errorf("got payload %q, want %q", received[0].Payload, "hello")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests — Close
+// ---------------------------------------------------------------------------
+
+func TestClose_CallsDrain(t *testing.T) {
+	drained := false
+	mock := &mockConn{
+		drainFn: func() error {
+			drained = true
+			return nil
+		},
+	}
+	c := newClient(mock)
+	if err := c.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !drained {
+		t.Error("expected Drain to be called")
+	}
+}
+
+func TestClose_WhenNotConnected(t *testing.T) {
+	c := NewMQ9Client("nats://localhost:4222")
+	if err := c.Close(); err != nil {
+		t.Errorf("expected no error when not connected, got %v", err)
 	}
 }
 
