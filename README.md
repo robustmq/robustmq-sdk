@@ -102,7 +102,6 @@ cd java && mvn compile
 mvn exec:java -Dexec.mainClass=Demo
 
 # Rust
-cp demo/demo.rs rust/examples/demo.rs
 cd rust && cargo run --example demo
 
 # C#
