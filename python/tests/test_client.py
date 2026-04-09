@@ -187,6 +187,16 @@ async def test_send_dict_payload():
 
 
 @pytest.mark.asyncio
+async def test_send_low_priority():
+    client = _make_client()
+    nc = await _inject_nc(client)
+
+    await client.send("m-001", b"bg", priority=Priority.LOW)
+
+    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001.low", b"bg")
+
+
+@pytest.mark.asyncio
 async def test_send_invalid_priority():
     client = _make_client()
     await _inject_nc(client)

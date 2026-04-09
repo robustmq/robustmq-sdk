@@ -10,7 +10,7 @@
 const { MQ9Client } = require("@robustmq/sdk/mq9");
 
 async function main() {
-  // demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+  // demo.robustmq.com is a public RobustMQ service for testing. Replace with your own server address if needed.
   const client = new MQ9Client({ server: "nats://demo.robustmq.com:4222" });
   await client.connect();
   console.log("[js] connected");

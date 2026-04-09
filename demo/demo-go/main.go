@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	// demo.robustmq.com 是公共的 RobustMQ 服务，可用于验证功能和测试，也可修改为自己的服务地址。
+	// demo.robustmq.com is a public RobustMQ service for testing. Replace with your own server address if needed.
 	c := mq9.NewMQ9Client("nats://demo.robustmq.com:4222")
 	if err := c.Connect(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
