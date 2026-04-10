@@ -7,7 +7,7 @@
     <PackageId>RobustMQ</PackageId>
     <RootNamespace>RobustMQ.Mq9</RootNamespace>
     <AssemblyName>RobustMQ</AssemblyName>
-    <Version>0.3.5</Version>
+    <Version>1.0.1</Version>
     <Description>RobustMQ SDK — unified messaging for AI, IoT, and data pipelines</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/robustmq/robustmq-sdk</PackageProjectUrl>

@@ -33,10 +33,10 @@ func main() {
 	fmt.Printf("[go] private mailbox: %s\n", mailbox.MailID)
 
 	// 2. Send 3 messages with different priorities
-	_ = c.Send(mailbox.MailID, []byte("urgent task"), mq9.High)
+	_ = c.Send(mailbox.MailID, []byte("abort signal"), mq9.Critical)
+	_ = c.Send(mailbox.MailID, []byte("urgent task"), mq9.Urgent)
 	_ = c.Send(mailbox.MailID, []byte("normal task"), mq9.Normal)
-	_ = c.Send(mailbox.MailID, []byte("background task"), mq9.Low)
-	fmt.Println("[go] sent 3 messages (high / normal / low)")
+	fmt.Println("[go] sent 3 messages (critical / urgent / normal)")
 
 	// 3. Subscribe and print received messages
 	sub, err := c.Subscribe(mailbox.MailID, func(msg *mq9.Message) {

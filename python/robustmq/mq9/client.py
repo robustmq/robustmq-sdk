@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Subject constants
 _PREFIX = "$mq9.AI"
 _MAILBOX_CREATE = f"{_PREFIX}.MAILBOX.CREATE"
-_MAILBOX_MSG = f"{_PREFIX}.MAILBOX.MSG.{{mail_id}}.{{priority}}"
+_MAILBOX_MSG_BASE = f"{_PREFIX}.MAILBOX.MSG.{{mail_id}}"
 _MAILBOX_LIST = f"{_PREFIX}.MAILBOX.LIST.{{mail_id}}"
 _MAILBOX_DELETE = f"{_PREFIX}.MAILBOX.DELETE.{{mail_id}}.{{msg_id}}"
 
@@ -29,10 +29,35 @@ _MAILBOX_DELETE = f"{_PREFIX}.MAILBOX.DELETE.{{mail_id}}.{{msg_id}}"
 _REQUEST_TIMEOUT = 5.0  # seconds
 
 
+def _msg_subject(mail_id: str, priority: "Priority") -> str:
+    """Return the NATS subject for sending a message.
+
+    normal (default) uses the bare subject (no suffix).
+    urgent and critical append the priority as a suffix.
+    """
+    if priority == Priority.NORMAL:
+        return _MAILBOX_MSG_BASE.format(mail_id=mail_id)
+    return f"{_MAILBOX_MSG_BASE.format(mail_id=mail_id)}.{priority.value}"
+
+
+def _sub_subject(mail_id: str, priority: str) -> str:
+    """Return the NATS subject for subscribing.
+
+    "*" → wildcard subject, matches all priorities (normal, urgent, critical).
+    "normal" → bare subject (no suffix).
+    "urgent" / "critical" → subject with priority suffix.
+    """
+    if priority == "*":
+        return f"{_MAILBOX_MSG_BASE.format(mail_id=mail_id)}.*"
+    if Priority(priority) == Priority.NORMAL:
+        return _MAILBOX_MSG_BASE.format(mail_id=mail_id)
+    return f"{_MAILBOX_MSG_BASE.format(mail_id=mail_id)}.{priority}"
+
+
 class Priority(str, Enum):
-    HIGH = "high"
+    CRITICAL = "critical"
+    URGENT = "urgent"
     NORMAL = "normal"
-    LOW = "low"
 
 
 @dataclass
@@ -192,11 +217,11 @@ class Client:
         Args:
             mail_id: Target mailbox identifier.
             payload: Message body. Strings are UTF-8 encoded; dicts are JSON-encoded.
-            priority: Message priority — high, normal (default), or low.
+            priority: Message priority — critical, urgent, or normal (default).
         """
         self._ensure_connected()
         priority = Priority(priority)
-        subject = _MAILBOX_MSG.format(mail_id=mail_id, priority=priority.value)
+        subject = _msg_subject(mail_id, priority)
         data = _encode_payload(payload)
         await self._nc.publish(subject, data)  # type: ignore[union-attr]
 
@@ -222,11 +247,8 @@ class Client:
         """
         self._ensure_connected()
 
-        if priority == "*":
-            subject = _MAILBOX_MSG.format(mail_id=mail_id, priority="*")
-        else:
-            p = Priority(priority).value
-            subject = _MAILBOX_MSG.format(mail_id=mail_id, priority=p)
+        p = priority if isinstance(priority, str) else priority.value
+        subject = _sub_subject(mail_id, p)
 
         async def _handler(raw: Msg) -> None:
             try:
@@ -339,11 +361,15 @@ def _parse_incoming(mail_id: str, raw: Msg) -> Message:
     The server may send a JSON envelope or raw bytes depending on version.
     We try JSON first and fall back to treating the full body as payload.
     """
-    # Extract priority from subject: last token
-    parts = raw.subject.split(".")
-    priority_str = parts[-1] if parts else "normal"
+    # Extract priority from subject.
+    # Subject is $mq9.AI.MAILBOX.MSG.{mail_id} (normal, no suffix)
+    # or $mq9.AI.MAILBOX.MSG.{mail_id}.{urgent|critical}
+    # We strip the fixed prefix to find whether a priority suffix is present.
+    _msg_prefix = f"$mq9.AI.MAILBOX.MSG.{mail_id}"
+    suffix = raw.subject[len(_msg_prefix):]  # "" or ".urgent" or ".critical"
+    priority_str = suffix.lstrip(".")
     try:
-        priority = Priority(priority_str)
+        priority = Priority(priority_str) if priority_str else Priority.NORMAL
     except ValueError:
         priority = Priority.NORMAL
 

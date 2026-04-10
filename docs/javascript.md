@@ -63,7 +63,7 @@ client.delete(mailId, msgId): Promise<void>
 ## Priority
 
 ```typescript
-"high" | "normal" | "low"
+"critical" | "urgent" | "normal"  // "normal" is default (no suffix in subject)
 ```
 
 ## Public mailbox

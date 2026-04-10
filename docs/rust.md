@@ -69,9 +69,9 @@ client.delete(mail_id: &str, msg_id: &str) -> Result<(), MQ9Error>
 ## Priority
 
 ```rust
-Priority::High    // "high"
-Priority::Normal  // "normal"
-Priority::Low     // "low"
+Priority::Critical  // "critical" — highest
+Priority::Urgent    // "urgent"
+Priority::Normal    // "normal" — default, no suffix
 ```
 
 ## Public mailbox

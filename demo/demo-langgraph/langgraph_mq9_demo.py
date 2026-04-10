@@ -133,7 +133,7 @@ async def node_reviewer(state: WorkflowState) -> WorkflowState:
         print(f"[node_reviewer] review:\n{review}")
 
         # Send review back to writer
-        await client.send(reply_to, review.encode(), priority=Priority.HIGH)
+        await client.send(reply_to, review.encode(), priority=Priority.CRITICAL)
         print(f"[node_reviewer] sent review to writer ({reply_to})")
 
     return state

@@ -60,9 +60,9 @@ Task DeleteAsync(string mailId, string msgId)
 ## Priority
 
 ```csharp
-Priority.High    // "high"
-Priority.Normal  // "normal"
-Priority.Low     // "low"
+Priority.Critical  // "critical" — highest
+Priority.Urgent    // "urgent"
+Priority.Normal    // "normal" — default, no suffix
 ```
 
 ## Public mailbox

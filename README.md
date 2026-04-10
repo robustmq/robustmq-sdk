@@ -12,7 +12,7 @@ mq9 gives every agent a durable mailbox. Messages persist until TTL expires — 
 | Concept | Description |
 |---------|-------------|
 | **Mailbox** | Agent's address. Private (UUID) or public (user-defined name). TTL-driven, auto-cleaned. |
-| **Priority** | `high` / `normal` / `low`. Cross-priority ordering guaranteed by storage. |
+| **Priority** | `critical` / `urgent` / `normal` (default, no suffix). Cross-priority ordering guaranteed by storage. |
 | **Store-first** | Subscriber gets all non-expired messages on connect, then real-time going forward. |
 | **Queue group** | Multiple subscribers sharing a group receive each message exactly once. |
 
@@ -21,7 +21,8 @@ mq9 gives every agent a durable mailbox. Messages persist until TTL expires — 
 | Operation | Subject |
 |-----------|---------|
 | Create mailbox | `$mq9.AI.MAILBOX.CREATE` |
-| Send message | `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}` |
+| Send message (default) | `$mq9.AI.MAILBOX.MSG.{mail_id}` |
+| Send message (urgent/critical) | `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}` |
 | Subscribe | `$mq9.AI.MAILBOX.MSG.{mail_id}.*` |
 | List metadata | `$mq9.AI.MAILBOX.LIST.{mail_id}` |
 | Delete message | `$mq9.AI.MAILBOX.DELETE.{mail_id}.{msg_id}` |
@@ -34,12 +35,12 @@ Full spec: [docs/mq9-protocol.md](docs/mq9-protocol.md)
 
 | Language | Package | Version | Install |
 |----------|---------|---------|---------|
-| Python | `robustmq` | 0.3.5 | `pip install robustmq` |
-| Go | `github.com/robustmq/robustmq-sdk/go` | v0.3.5 | `go get github.com/robustmq/robustmq-sdk/go` |
-| JavaScript | `@robustmq/sdk` | 0.3.5 | `npm install @robustmq/sdk` |
-| Java | `com.robustmq:robustmq` | 0.3.5 | Maven / Gradle (see below) |
-| Rust | `robustmq` | 0.3.5 | `cargo add robustmq` |
-| C# | `RobustMQ` | 0.3.5 | `dotnet add package RobustMQ` |
+| Python | `robustmq` | 1.0.1 | `pip install robustmq` |
+| Go | `github.com/robustmq/robustmq-sdk/go` | v1.0.1 | `go get github.com/robustmq/robustmq-sdk/go` |
+| JavaScript | `@robustmq/sdk` | 1.0.1 | `npm install @robustmq/sdk` |
+| Java | `com.robustmq:robustmq` | 1.0.1 | Maven / Gradle (see below) |
+| Rust | `robustmq` | 1.0.1 | `cargo add robustmq` |
+| C# | `RobustMQ` | 1.0.1 | `dotnet add package RobustMQ` |
 
 ### Integrations
 
@@ -99,7 +100,7 @@ await client.send(mailbox.mailId, "hello", "normal");
 <dependency>
   <groupId>com.robustmq</groupId>
   <artifactId>robustmq</artifactId>
-  <version>0.3.5</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 ```java
@@ -113,7 +114,7 @@ client.send(mailbox.getMailId(), "hello".getBytes(), Priority.NORMAL).get();
 
 **Java (Gradle)**
 ```groovy
-implementation 'com.robustmq:robustmq:0.3.5'
+implementation 'com.robustmq:robustmq:1.0.1'
 ```
 
 **Rust**
@@ -201,7 +202,7 @@ Full examples: [demo/demo-langchain-mq9/](demo/demo-langchain-mq9/) · [demo/dem
 
 Each demo is a standalone project that connects to `nats://demo.robustmq.com:4222` and runs the same scenario:
 1. Create a private mailbox (TTL 60s)
-2. Send 3 messages (high / normal / low priority)
+2. Send 3 messages (critical / urgent / normal priority)
 3. Subscribe and print received messages
 4. List mailbox metadata, delete one message
 5. Create a public mailbox
@@ -261,7 +262,7 @@ demo/
   demo-langchain-mq9/     # langchain-mq9 demo
   demo-multi-agent/       # cross-language multi-agent demo (Python + Go)
   demo-langgraph/         # LangGraph workflow demo
-VERSION                   # Canonical version (currently 0.3.5)
+VERSION                   # Canonical version (currently 1.0.1)
 ```
 
 ---

@@ -74,7 +74,7 @@ FINAL:
 | Each LangGraph node owns a private mq9 mailbox | `node_writer` and `node_reviewer` each call `client.create()` |
 | Async handoff between nodes via mq9 | writer sends draft; reviewer subscribes, reads, replies |
 | Store-first semantics | reviewer can start after writer has already published |
-| Priority-ordered delivery | draft sent as `NORMAL`, review sent back as `HIGH` |
+| Priority-ordered delivery | draft sent as `NORMAL`, review sent back as `CRITICAL` |
 | LangChain LLM inside a LangGraph node | `ChatOpenAI(model="gpt-4o-mini")` called inside each node |
 
 ## Using `langchain-mq9` tools instead

@@ -70,9 +70,9 @@ await client.delete(mail_id, msg_id)
 ## Priority
 
 ```python
-Priority.HIGH    # "high"
-Priority.NORMAL  # "normal"
-Priority.LOW     # "low"
+Priority.CRITICAL  # "critical" — highest priority
+Priority.URGENT    # "urgent"
+Priority.NORMAL    # "normal" — default, no suffix
 ```
 
 ## Public mailbox

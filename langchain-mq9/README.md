@@ -48,7 +48,7 @@ Sends an async message to a mailbox.
 |-----------|------|---------|-------------|
 | `mail_id` | str | — | Target mailbox address |
 | `content` | str | — | Message content |
-| `priority` | str | `"normal"` | `"high"`, `"normal"`, or `"low"` |
+| `priority` | str | `"normal"` | `"critical"`, `"urgent"`, or `"normal"` |
 
 ### `GetMessagesTool`
 

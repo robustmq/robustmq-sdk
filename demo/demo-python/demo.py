@@ -22,10 +22,10 @@ async def main() -> None:
     print(f"[python] private mailbox: {mailbox.mail_id}")
 
     # 2. Send 3 messages with different priorities
-    await client.send(mailbox.mail_id, b"urgent task", priority=Priority.HIGH)
+    await client.send(mailbox.mail_id, b"abort signal", priority=Priority.CRITICAL)
+    await client.send(mailbox.mail_id, b"urgent task", priority=Priority.URGENT)
     await client.send(mailbox.mail_id, b"normal task", priority=Priority.NORMAL)
-    await client.send(mailbox.mail_id, b"background task", priority=Priority.LOW)
-    print("[python] sent 3 messages (high / normal / low)")
+    print("[python] sent 3 messages (critical / urgent / normal)")
 
     # 3. Subscribe and print received messages
     async def handler(msg):

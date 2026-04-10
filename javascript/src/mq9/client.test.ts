@@ -100,24 +100,35 @@ describe("create", () => {
 // ---------------------------------------------------------------------------
 
 describe("send", () => {
-  test("publishes to correct subject with normal priority", async () => {
+  test("normal priority uses bare subject (no suffix)", async () => {
     const t = mockTransport();
     const client = clientWith(t);
     await client.send("m-001", Buffer.from("hello"), "normal");
 
     expect(t.publish).toHaveBeenCalledWith(
-      "$mq9.AI.MAILBOX.MSG.m-001.normal",
+      "$mq9.AI.MAILBOX.MSG.m-001",
       expect.any(Uint8Array),
     );
   });
 
-  test("publishes to high priority subject", async () => {
+  test("critical priority appends suffix", async () => {
     const t = mockTransport();
     const client = clientWith(t);
-    await client.send("m-001", Buffer.from("urgent"), "high");
+    await client.send("m-001", Buffer.from("abort"), "critical");
 
     expect(t.publish).toHaveBeenCalledWith(
-      "$mq9.AI.MAILBOX.MSG.m-001.high",
+      "$mq9.AI.MAILBOX.MSG.m-001.critical",
+      expect.any(Uint8Array),
+    );
+  });
+
+  test("urgent priority appends suffix", async () => {
+    const t = mockTransport();
+    const client = clientWith(t);
+    await client.send("m-001", Buffer.from("interrupt"), "urgent");
+
+    expect(t.publish).toHaveBeenCalledWith(
+      "$mq9.AI.MAILBOX.MSG.m-001.urgent",
       expect.any(Uint8Array),
     );
   });
@@ -140,17 +151,6 @@ describe("send", () => {
     expect(JSON.parse(Buffer.from(data).toString())).toEqual({
       task: "summarize",
     });
-  });
-
-  test("publishes to low priority subject", async () => {
-    const t = mockTransport();
-    const client = clientWith(t);
-    await client.send("m-001", Buffer.from("bg"), "low");
-
-    expect(t.publish).toHaveBeenCalledWith(
-      "$mq9.AI.MAILBOX.MSG.m-001.low",
-      expect.any(Uint8Array),
-    );
   });
 });
 
@@ -196,7 +196,7 @@ describe("subscribe", () => {
     expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001.*");
   });
 
-  test("single priority uses specific subject", async () => {
+  test("critical priority uses suffixed subject", async () => {
     let capturedSubject = "";
     const t = mockTransport({
       subscribe: jest.fn((subject: string) => {
@@ -205,9 +205,23 @@ describe("subscribe", () => {
       }),
     });
     const client = clientWith(t);
-    await client.subscribe("m-001", async () => {}, { priority: "high" });
+    await client.subscribe("m-001", async () => {}, { priority: "critical" });
 
-    expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001.high");
+    expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001.critical");
+  });
+
+  test("normal priority uses bare subject", async () => {
+    let capturedSubject = "";
+    const t = mockTransport({
+      subscribe: jest.fn((subject: string) => {
+        capturedSubject = subject;
+        return makeSubscription();
+      }),
+    });
+    const client = clientWith(t);
+    await client.subscribe("m-001", async () => {}, { priority: "normal" });
+
+    expect(capturedSubject).toBe("$mq9.AI.MAILBOX.MSG.m-001");
   });
 
   test("queue group is forwarded", async () => {
@@ -224,10 +238,10 @@ describe("subscribe", () => {
     expect(capturedOpts.queue).toBe("workers");
   });
 
-  test("callback invoked with parsed message", async () => {
+  test("callback invoked with parsed message from bare subject (normal)", async () => {
     const payload = Buffer.from("hello").toString("base64");
     const raw = {
-      subject: "$mq9.AI.MAILBOX.MSG.m-001.normal",
+      subject: "$mq9.AI.MAILBOX.MSG.m-001",
       data: Buffer.from(
         JSON.stringify({ msg_id: "x1", priority: "normal", payload }),
       ),
@@ -296,7 +310,7 @@ describe("list", () => {
       request: jest.fn().mockResolvedValue(
         jsonReply({
           mail_id: "m-001",
-          messages: [{ msg_id: "x1", priority: "high", ts: 100 }],
+          messages: [{ msg_id: "x1", priority: "critical", ts: 100 }],
         }),
       ),
     });
@@ -305,7 +319,7 @@ describe("list", () => {
 
     expect(msgs).toHaveLength(1);
     expect(msgs[0].msgId).toBe("x1");
-    expect(msgs[0].priority).toBe("high" as Priority);
+    expect(msgs[0].priority).toBe("critical" as Priority);
     expect(msgs[0].ts).toBe(100);
 
     expect(t.request).toHaveBeenCalledWith(

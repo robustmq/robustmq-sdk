@@ -9,7 +9,7 @@
 <dependency>
   <groupId>com.robustmq</groupId>
   <artifactId>robustmq</artifactId>
-  <version>0.3.5</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
@@ -70,9 +70,9 @@ CompletableFuture<Void> delete(String mailId, String msgId)
 ## Priority
 
 ```java
-Priority.HIGH    // "high"
-Priority.NORMAL  // "normal"
-Priority.LOW     // "low"
+Priority.CRITICAL  // "critical" — highest
+Priority.URGENT    // "urgent"
+Priority.NORMAL    // "normal" — default, no suffix
 ```
 
 ## Public mailbox

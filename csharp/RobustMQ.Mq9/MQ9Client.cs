@@ -82,7 +82,9 @@ public class MQ9Client : IAsyncDisposable
         Priority priority = Priority.Normal)
     {
         EnsureConnected();
-        var subject = $"{Prefix}.MAILBOX.MSG.{mailId}.{priority.ToSubjectString()}";
+        var subject = priority == Priority.Normal
+            ? $"{Prefix}.MAILBOX.MSG.{mailId}"
+            : $"{Prefix}.MAILBOX.MSG.{mailId}.{priority.ToSubjectString()}";
         await _nc!.PublishAsync(subject, payload);
     }
 
@@ -96,7 +98,9 @@ public class MQ9Client : IAsyncDisposable
     {
         EnsureConnected();
         var subject = priority.HasValue
-            ? $"{Prefix}.MAILBOX.MSG.{mailId}.{priority.Value.ToSubjectString()}"
+            ? (priority.Value == Priority.Normal
+                ? $"{Prefix}.MAILBOX.MSG.{mailId}"
+                : $"{Prefix}.MAILBOX.MSG.{mailId}.{priority.Value.ToSubjectString()}")
             : $"{Prefix}.MAILBOX.MSG.{mailId}.*";
 
         var sub = string.IsNullOrEmpty(queueGroup)
@@ -182,9 +186,11 @@ public class MQ9Client : IAsyncDisposable
 
     private static Mq9Message ParseIncoming(string mailId, string subject, byte[] data)
     {
-        // Extract priority from last subject token
-        var parts = subject.Split('.');
-        var priorityStr = parts.Length > 0 ? parts[^1] : "normal";
+        // Subject is bare $mq9.AI.MAILBOX.MSG.{mailId} (normal)
+        // or $mq9.AI.MAILBOX.MSG.{mailId}.{urgent|critical}
+        var msgBase = $"{Prefix}.MAILBOX.MSG.{mailId}";
+        var suffix = subject.StartsWith(msgBase) ? subject[msgBase.Length..] : "";
+        var priorityStr = suffix.StartsWith(".") ? suffix[1..] : "";
         var priority = PriorityExtensions.FromString(priorityStr);
 
         try

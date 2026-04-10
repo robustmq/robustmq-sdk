@@ -8,7 +8,7 @@ import { connect, NatsConnection, Subscription } from "nats";
 // Types
 // ---------------------------------------------------------------------------
 
-export type Priority = "high" | "normal" | "low";
+export type Priority = "critical" | "urgent" | "normal";
 
 export interface Mailbox {
   mailId: string;
@@ -38,7 +38,7 @@ export interface CreateOptions {
 }
 
 export interface SubscribeOptions {
-  priority?: Priority | "*";
+  priority?: Priority | "*"; // "*" = all priorities (default)
   queueGroup?: string;
 }
 
@@ -58,8 +58,21 @@ export class MQ9Error extends Error {
 const PREFIX = "$mq9.AI";
 const MAILBOX_CREATE = `${PREFIX}.MAILBOX.CREATE`;
 
+function subjectMsgBase(mailId: string): string {
+  return `${PREFIX}.MAILBOX.MSG.${mailId}`;
+}
+
+// Send subject: normal uses bare (no suffix); urgent/critical append suffix.
 function subjectMsg(mailId: string, priority: string): string {
-  return `${PREFIX}.MAILBOX.MSG.${mailId}.${priority}`;
+  if (priority === "normal") return subjectMsgBase(mailId);
+  return `${subjectMsgBase(mailId)}.${priority}`;
+}
+
+// Subscribe subject: "*" uses wildcard; normal uses bare; others append suffix.
+function subjectSub(mailId: string, priority: string): string {
+  if (priority === "*") return `${subjectMsgBase(mailId)}.*`;
+  if (priority === "normal") return subjectMsgBase(mailId);
+  return `${subjectMsgBase(mailId)}.${priority}`;
 }
 function subjectList(mailId: string): string {
   return `${PREFIX}.MAILBOX.LIST.${mailId}`;
@@ -166,7 +179,7 @@ export class MQ9Client {
   ): Promise<{ unsubscribe(): void }> {
     this.ensureConnected();
     const priority = opts.priority ?? "*";
-    const subject = subjectMsg(mailId, priority);
+    const subject = subjectSub(mailId, priority);
     const sub = this._transport!.subscribe(subject, {
       queue: opts.queueGroup,
     });
@@ -303,8 +316,9 @@ function parseIncoming(
   subject: string,
   data: Uint8Array,
 ): Mq9Message {
-  const parts = subject.split(".");
-  const priorityStr = parts[parts.length - 1] ?? "normal";
+  const base = subjectMsgBase(mailId);
+  const suffix = subject.startsWith(base) ? subject.slice(base.length) : "";
+  const priorityStr = suffix.startsWith(".") ? suffix.slice(1) : "";
   const priority = toPriority(priorityStr);
 
   try {
@@ -339,6 +353,6 @@ function parseMessageNode(
 }
 
 function toPriority(s: string): Priority {
-  if (s === "high" || s === "low") return s;
+  if (s === "critical" || s === "urgent") return s;
   return "normal";
 }

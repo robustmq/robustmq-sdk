@@ -1,7 +1,6 @@
 package com.robustmq.mq9;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,22 +89,20 @@ class MQ9ClientTest {
     @Test
     void sendNormalPriority() throws Exception {
         client.send("m-001", "hello".getBytes(), Priority.NORMAL).get();
-
-        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.normal", "hello".getBytes());
+        // normal uses bare subject (no suffix)
+        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001", "hello".getBytes());
     }
 
     @Test
-    void sendHighPriority() throws Exception {
-        client.send("m-001", "urgent".getBytes(), Priority.HIGH).get();
-
-        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.high", "urgent".getBytes());
+    void sendCriticalPriority() throws Exception {
+        client.send("m-001", "abort".getBytes(), Priority.CRITICAL).get();
+        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.critical", "abort".getBytes());
     }
 
     @Test
-    void sendLowPriority() throws Exception {
-        client.send("m-001", "bg".getBytes(), Priority.LOW).get();
-
-        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.low", "bg".getBytes());
+    void sendUrgentPriority() throws Exception {
+        client.send("m-001", "interrupt".getBytes(), Priority.URGENT).get();
+        verify(mockNc).publish("$mq9.AI.MAILBOX.MSG.m-001.urgent", "interrupt".getBytes());
     }
 
     // ── list ──────────────────────────────────────────────────────────────────
@@ -113,7 +110,7 @@ class MQ9ClientTest {
     @Test
     void listMessages() throws Exception {
         String json = "{\"mail_id\":\"m-001\",\"messages\":[{\"msg_id\":\"x1\","
-                + "\"priority\":\"high\",\"ts\":100}]}";
+                + "\"priority\":\"critical\",\"ts\":100}]}";
         when(mockNc.request(eq("$mq9.AI.MAILBOX.LIST.m-001"), any(byte[].class), any(Duration.class)))
                 .thenReturn(fakeReply(json));
 
@@ -121,7 +118,7 @@ class MQ9ClientTest {
 
         assertEquals(1, metas.size());
         assertEquals("x1", metas.get(0).getMsgId());
-        assertEquals(Priority.HIGH, metas.get(0).getPriority());
+        assertEquals(Priority.CRITICAL, metas.get(0).getPriority());
         assertEquals(100L, metas.get(0).getTs());
     }
 
@@ -170,14 +167,26 @@ class MQ9ClientTest {
     }
 
     @Test
-    void subscribeSinglePriority() throws Exception {
+    void subscribeSinglePriority_Critical() throws Exception {
         Dispatcher dispatcher = mock(Dispatcher.class);
         when(dispatcher.subscribe(anyString())).thenReturn(dispatcher);
         when(mockNc.createDispatcher(any())).thenReturn(dispatcher);
 
-        client.subscribe("m-001", msg -> {}, Priority.HIGH, "").get();
+        client.subscribe("m-001", msg -> {}, Priority.CRITICAL, "").get();
 
-        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001.high");
+        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001.critical");
+    }
+
+    @Test
+    void subscribeSinglePriority_Normal() throws Exception {
+        Dispatcher dispatcher = mock(Dispatcher.class);
+        when(dispatcher.subscribe(anyString())).thenReturn(dispatcher);
+        when(mockNc.createDispatcher(any())).thenReturn(dispatcher);
+
+        client.subscribe("m-001", msg -> {}, Priority.NORMAL, "").get();
+
+        // normal uses bare subject (no suffix)
+        verify(dispatcher).subscribe("$mq9.AI.MAILBOX.MSG.m-001");
     }
 
     @Test
@@ -195,8 +204,6 @@ class MQ9ClientTest {
 
     @Test
     void closeDrainsConnection() throws Exception {
-        // nc is already injected; close should attempt drain
-        // We mock drain to return a CompletableFuture so it doesn't block
         when(mockNc.drain(any(Duration.class)))
                 .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(true));
 

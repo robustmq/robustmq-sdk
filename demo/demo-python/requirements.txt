@@ -1,1 +1,1 @@
-robustmq==0.3.5
+robustmq==1.0.1

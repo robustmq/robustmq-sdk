@@ -92,41 +92,42 @@ public class MQ9ClientTests
     // ── send ──────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Send_PublishesCorrectSubject()
+    public async Task Send_NormalPriority_UsesBareSubject()
     {
         var mock = Substitute.For<INatsConnection>();
         var client = ClientWithMock(mock);
 
         await client.SendAsync("m-001", "hello"u8.ToArray(), Priority.Normal);
 
+        // normal uses bare subject (no suffix)
         await mock.Received(1).PublishAsync(
-            "$mq9.AI.MAILBOX.MSG.m-001.normal",
+            "$mq9.AI.MAILBOX.MSG.m-001",
             Arg.Any<byte[]>());
     }
 
     [Fact]
-    public async Task Send_HighPriority_CorrectSubject()
+    public async Task Send_CriticalPriority_UsesSuffix()
     {
         var mock = Substitute.For<INatsConnection>();
         var client = ClientWithMock(mock);
 
-        await client.SendAsync("m-001", "urgent"u8.ToArray(), Priority.High);
+        await client.SendAsync("m-001", "abort"u8.ToArray(), Priority.Critical);
 
         await mock.Received(1).PublishAsync(
-            "$mq9.AI.MAILBOX.MSG.m-001.high",
+            "$mq9.AI.MAILBOX.MSG.m-001.critical",
             Arg.Any<byte[]>());
     }
 
     [Fact]
-    public async Task Send_LowPriority_CorrectSubject()
+    public async Task Send_UrgentPriority_UsesSuffix()
     {
         var mock = Substitute.For<INatsConnection>();
         var client = ClientWithMock(mock);
 
-        await client.SendAsync("m-001", "bg"u8.ToArray(), Priority.Low);
+        await client.SendAsync("m-001", "interrupt"u8.ToArray(), Priority.Urgent);
 
         await mock.Received(1).PublishAsync(
-            "$mq9.AI.MAILBOX.MSG.m-001.low",
+            "$mq9.AI.MAILBOX.MSG.m-001.urgent",
             Arg.Any<byte[]>());
     }
 
@@ -151,7 +152,7 @@ public class MQ9ClientTests
     }
 
     [Fact]
-    public async Task Subscribe_SinglePriority_UsesSpecificSubject()
+    public async Task Subscribe_CriticalPriority_UsesSuffixedSubject()
     {
         var mock = Substitute.For<INatsConnection>();
         var capturedSubject = "";
@@ -164,9 +165,29 @@ public class MQ9ClientTests
         var client = ClientWithMock(mock);
 
         await using var _ = await client.SubscribeAsync("m-001", async _ => await Task.CompletedTask,
-            priority: Priority.High);
+            priority: Priority.Critical);
 
-        Assert.Equal("$mq9.AI.MAILBOX.MSG.m-001.high", capturedSubject);
+        Assert.Equal("$mq9.AI.MAILBOX.MSG.m-001.critical", capturedSubject);
+    }
+
+    [Fact]
+    public async Task Subscribe_NormalPriority_UsesBareSubject()
+    {
+        var mock = Substitute.For<INatsConnection>();
+        var capturedSubject = "";
+        mock.SubscribeCoreAsync<byte[]>(Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                capturedSubject = callInfo.ArgAt<string>(0);
+                return ValueTask.FromResult(Substitute.For<INatsSub<byte[]>>());
+            });
+        var client = ClientWithMock(mock);
+
+        await using var _ = await client.SubscribeAsync("m-001", async _ => await Task.CompletedTask,
+            priority: Priority.Normal);
+
+        // normal uses bare subject (no suffix)
+        Assert.Equal("$mq9.AI.MAILBOX.MSG.m-001", capturedSubject);
     }
 
     [Fact]
@@ -210,7 +231,7 @@ public class MQ9ClientTests
     public async Task List_ReturnsMessageMeta()
     {
         var json = "{\"mail_id\":\"m-001\",\"messages\":[{\"msg_id\":\"x1\","
-                   + "\"priority\":\"high\",\"ts\":100}]}";
+                   + "\"priority\":\"critical\",\"ts\":100}]}";
 
         var mock = Substitute.For<INatsConnection>();
         mock.RequestAsync<byte[], byte[]>(
@@ -223,7 +244,7 @@ public class MQ9ClientTests
 
         Assert.Single(metas);
         Assert.Equal("x1", metas[0].MsgId);
-        Assert.Equal(Priority.High, metas[0].Priority);
+        Assert.Equal(Priority.Critical, metas[0].Priority);
         Assert.Equal(100L, metas[0].Ts);
     }
 

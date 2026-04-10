@@ -165,17 +165,28 @@ func TestSend_NormalPriority(t *testing.T) {
 	if len(mock.published) != 1 {
 		t.Fatalf("expected 1 publish, got %d", len(mock.published))
 	}
-	want := "$mq9.AI.MAILBOX.MSG.m-001.normal"
+	// normal uses bare subject (no suffix)
+	want := "$mq9.AI.MAILBOX.MSG.m-001"
 	if mock.published[0].Subject != want {
 		t.Errorf("got subject %q, want %q", mock.published[0].Subject, want)
 	}
 }
 
-func TestSend_HighPriority(t *testing.T) {
+func TestSend_CriticalPriority(t *testing.T) {
 	mock := &mockConn{}
 	c := newClient(mock)
-	_ = c.Send("m-001", []byte("urgent"), High)
-	want := "$mq9.AI.MAILBOX.MSG.m-001.high"
+	_ = c.Send("m-001", []byte("abort"), Critical)
+	want := "$mq9.AI.MAILBOX.MSG.m-001.critical"
+	if mock.published[0].Subject != want {
+		t.Errorf("got %q, want %q", mock.published[0].Subject, want)
+	}
+}
+
+func TestSend_UrgentPriority(t *testing.T) {
+	mock := &mockConn{}
+	c := newClient(mock)
+	_ = c.Send("m-001", []byte("interrupt"), Urgent)
+	want := "$mq9.AI.MAILBOX.MSG.m-001.urgent"
 	if mock.published[0].Subject != want {
 		t.Errorf("got %q, want %q", mock.published[0].Subject, want)
 	}
@@ -195,7 +206,7 @@ func TestList_Messages(t *testing.T) {
 			"messages": []any{
 				map[string]any{
 					"msg_id":   "x1",
-					"priority": "high",
+					"priority": "critical",
 					"ts":       float64(100),
 				},
 			},
@@ -213,8 +224,8 @@ func TestList_Messages(t *testing.T) {
 	if msgs[0].MsgID != "x1" {
 		t.Errorf("got msg_id %q, want %q", msgs[0].MsgID, "x1")
 	}
-	if msgs[0].Priority != High {
-		t.Errorf("got priority %q, want High", msgs[0].Priority)
+	if msgs[0].Priority != Critical {
+		t.Errorf("got priority %q, want Critical", msgs[0].Priority)
 	}
 	if msgs[0].Ts != 100 {
 		t.Errorf("got ts %d, want 100", msgs[0].Ts)
@@ -256,20 +267,6 @@ func TestDelete(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Tests — Send (low priority)
-// ---------------------------------------------------------------------------
-
-func TestSend_LowPriority(t *testing.T) {
-	mock := &mockConn{}
-	c := newClient(mock)
-	_ = c.Send("m-001", []byte("bg"), Low)
-	want := "$mq9.AI.MAILBOX.MSG.m-001.low"
-	if mock.published[0].Subject != want {
-		t.Errorf("got %q, want %q", mock.published[0].Subject, want)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // Tests — Subscribe
 // ---------------------------------------------------------------------------
 
@@ -292,7 +289,7 @@ func TestSubscribe_AllPriorities(t *testing.T) {
 	}
 }
 
-func TestSubscribe_SinglePriority(t *testing.T) {
+func TestSubscribe_SinglePriority_Critical(t *testing.T) {
 	var capturedSubject string
 	mock := &mockConn{
 		subscribeFn: func(subject string, _ nats.MsgHandler) (*nats.Subscription, error) {
@@ -301,11 +298,31 @@ func TestSubscribe_SinglePriority(t *testing.T) {
 		},
 	}
 	c := newClient(mock)
-	_, err := c.Subscribe("m-001", func(_ *Message) {}, WithPriority(High))
+	_, err := c.Subscribe("m-001", func(_ *Message) {}, WithPriority(Critical))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "$mq9.AI.MAILBOX.MSG.m-001.high"
+	want := "$mq9.AI.MAILBOX.MSG.m-001.critical"
+	if capturedSubject != want {
+		t.Errorf("got subject %q, want %q", capturedSubject, want)
+	}
+}
+
+func TestSubscribe_SinglePriority_Normal(t *testing.T) {
+	var capturedSubject string
+	mock := &mockConn{
+		subscribeFn: func(subject string, _ nats.MsgHandler) (*nats.Subscription, error) {
+			capturedSubject = subject
+			return &nats.Subscription{}, nil
+		},
+	}
+	c := newClient(mock)
+	_, err := c.Subscribe("m-001", func(_ *Message) {}, WithPriority(Normal))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// normal uses bare subject (no suffix)
+	want := "$mq9.AI.MAILBOX.MSG.m-001"
 	if capturedSubject != want {
 		t.Errorf("got subject %q, want %q", capturedSubject, want)
 	}
@@ -347,9 +364,9 @@ func TestSubscribe_CallbackInvoked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Simulate server pushing a raw NATS message
+	// Simulate server pushing a message on the bare subject (normal priority)
 	raw := &nats.Msg{
-		Subject: "$mq9.AI.MAILBOX.MSG.m-001.normal",
+		Subject: "$mq9.AI.MAILBOX.MSG.m-001",
 		Data:    []byte(`{"msg_id":"x1","priority":"normal","payload":"aGVsbG8="}`),
 	}
 	capturedHandler(raw)

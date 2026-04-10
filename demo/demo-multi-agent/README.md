@@ -10,9 +10,9 @@ Agent A (Python)                         Agent B (Go)
       │                                        │
       │── create private mailbox ──────────────│
       │── publish reply address ──────────────▶│ (rendezvous mailbox)
-      │── send task [high] ──────────────────▶│
-      │── send task [normal] ───────────────▶│
-      │── send task [low] ──────────────────▶│
+      │── send task [critical] ───────────────▶│
+      │── send task [normal] ────────────────▶│
+      │── send task [urgent] ───────────────▶│
       │                                        │── process + send result ──▶ Agent A
       │                                        │── process + send result ──▶ Agent A
       │                                        │── process + send result ──▶ Agent A
@@ -53,11 +53,11 @@ python agent_a.py
 ```
 [agent-b] connected, waiting for messages on demo.multi-agent.rendezvous
 [agent-b] discovered Agent A reply address: m-550e8400-...
-[agent-b] processing [high]: Analyze sentiment of Q3 earnings call
+[agent-b] processing [critical]: Analyze sentiment of Q3 earnings call
 [agent-b] sent result to m-550e8400-...: DONE: Analyze sentiment of Q3 earnings call
 [agent-b] processing [normal]: Summarize the latest research papers
 [agent-b] sent result to m-550e8400-...: DONE: Summarize the latest research papers
-[agent-b] processing [low]: Index new documents in the knowledge base
+[agent-b] processing [urgent]: Index new documents in the knowledge base
 [agent-b] sent result to m-550e8400-...: DONE: Index new documents in the knowledge base
 [agent-b] done — processed 3 tasks
 ```
@@ -67,9 +67,9 @@ python agent_a.py
 ```
 [agent-a] private mailbox: m-550e8400-...
 [agent-a] published reply address to 'demo.multi-agent.rendezvous'
-[agent-a] sent task [high]: Analyze sentiment of Q3 earnings call
+[agent-a] sent task [critical]: Analyze sentiment of Q3 earnings call
 [agent-a] sent task [normal]: Summarize the latest research papers
-[agent-a] sent task [low]: Index new documents in the knowledge base
+[agent-a] sent task [urgent]: Index new documents in the knowledge base
 [agent-a] received result [normal]: DONE: Analyze sentiment of Q3 earnings call
 [agent-a] received result [normal]: DONE: Summarize the latest research papers
 [agent-a] received result [normal]: DONE: Index new documents in the knowledge base
@@ -82,6 +82,6 @@ python agent_a.py
 |---------|-------|
 | Private mailbox as a secure reply channel | `agent_a.py` — `client.create(ttl=120)` |
 | Public mailbox as an address rendezvous | `agent_a.py` — `client.create(..., public=True, name=rendezvous)` |
-| Priority-ordered task delivery | Agent B receives `high` before `normal` before `low` |
+| Priority-ordered task delivery | Agent B receives `critical` before `urgent` before `normal` |
 | Cross-language communication | Python SDK → Go SDK, same NATS subjects |
 | Store-first semantics | Agent B can start after Agent A publishes — it still gets all messages |

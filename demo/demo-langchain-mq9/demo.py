@@ -4,7 +4,7 @@ langchain-mq9 demo — two Agents communicating via mq9 using all 6 protocol ope
 Flow:
   Agent A creates a private mailbox
   Agent B creates a public mailbox (shared channel)
-  Agent B sends 3 messages (high / normal / low) to Agent A
+  Agent B sends 3 messages (critical / urgent / normal) to Agent A
   Agent A lists message metadata (no payload)
   Agent A reads messages with full content
   Agent A deletes the first message
@@ -47,13 +47,13 @@ async def main() -> None:
     print(f"[agent-b] {result}")
 
     # ── Agent B: send 3 messages to Agent A ──────────────────────────────────
-    result = await send._arun(mail_id=mail_id, content="Urgent: pipeline failed!", priority="high")
+    result = await send._arun(mail_id=mail_id, content="ABORT: pipeline failed!", priority="critical")
     print(f"[agent-b] {result}")
 
-    result = await send._arun(mail_id=mail_id, content="Daily report is ready.", priority="normal")
+    result = await send._arun(mail_id=mail_id, content="Interrupt: daily report ready.", priority="urgent")
     print(f"[agent-b] {result}")
 
-    result = await send._arun(mail_id=mail_id, content="Background sync complete.", priority="low")
+    result = await send._arun(mail_id=mail_id, content="Background sync complete.", priority="normal")
     print(f"[agent-b] {result}")
 
     # ── Agent A: list message metadata (no payload) ───────────────────────────

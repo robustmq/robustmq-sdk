@@ -7,7 +7,7 @@
 
   <groupId>io.robustmq.demo</groupId>
   <artifactId>demo-java</artifactId>
-  <version>0.3.5</version>
+  <version>1.0.1</version>
   <packaging>jar</packaging>
 
   <name>RobustMQ mq9 Java Demo</name>
@@ -22,7 +22,7 @@
     <dependency>
       <groupId>com.robustmq</groupId>
       <artifactId>robustmq</artifactId>
-      <version>0.3.5</version>
+      <version>1.0.1</version>
     </dependency>
   </dependencies>
 

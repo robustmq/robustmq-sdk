@@ -109,14 +109,15 @@ Built on top of NATS (transport layer), mq9 adds store-first semantics and prior
 
 ```
 $mq9.AI.MAILBOX.CREATE                              PUB+reply  create mailbox
-$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}            PUB        send message
-$mq9.AI.MAILBOX.MSG.{mail_id}.*                     SUB        subscribe (all priorities)
-$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}            SUB        subscribe (one priority)
+$mq9.AI.MAILBOX.MSG.{mail_id}                       PUB/SUB    send/receive default (normal) message
+$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}            PUB        send urgent or critical message
+$mq9.AI.MAILBOX.MSG.{mail_id}.*                     SUB        subscribe urgent+critical (excludes default normal)
+$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}            SUB        subscribe one non-default priority
 $mq9.AI.MAILBOX.LIST.{mail_id}                      PUB+reply  list messages snapshot (no payload)
 $mq9.AI.MAILBOX.DELETE.{mail_id}.{msg_id}           PUB+reply  delete one message
 ```
 
-Priority values: `high` / `normal` / `low`
+Priority values: `critical` (highest) / `urgent` / `normal` (default, no suffix)
 
 ### Key semantics
 
@@ -229,7 +230,7 @@ Each language has a standalone project that imports the published SDK v0.3.5.
 All demos run the same scenario:
 1. Connect to `nats://localhost:4222`
 2. Create a private mailbox (TTL 60s)
-3. Send 3 messages (high / normal / low priority)
+3. Send 3 messages (critical / urgent / normal priority)
 4. Subscribe and print received messages
 5. List mailbox metadata, delete one message
 6. Create a public mailbox

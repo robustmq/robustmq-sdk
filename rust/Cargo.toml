@@ -1,6 +1,6 @@
 [package]
 name = "robustmq"
-version = "0.3.5"
+version = "1.0.1"
 edition = "2021"
 description = "RobustMQ Rust SDK — unified messaging for AI, IoT, and data pipelines"
 license = "Apache-2.0"

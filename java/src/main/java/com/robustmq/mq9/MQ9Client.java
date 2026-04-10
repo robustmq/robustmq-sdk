@@ -108,7 +108,8 @@ public class MQ9Client implements AutoCloseable {
     public CompletableFuture<Void> send(String mailId, byte[] payload, Priority priority) {
         return CompletableFuture.runAsync(() -> {
             ensureConnected();
-            String subject = PREFIX + ".MAILBOX.MSG." + mailId + "." + priority.getValue();
+            String base = PREFIX + ".MAILBOX.MSG." + mailId;
+            String subject = (priority == Priority.NORMAL) ? base : base + "." + priority.getValue();
             try {
                 nc.publish(subject, payload);
             } catch (Exception e) {
@@ -123,9 +124,15 @@ public class MQ9Client implements AutoCloseable {
                                                     Priority priority, String queueGroup) {
         return CompletableFuture.supplyAsync(() -> {
             ensureConnected();
-            String sub = (priority != null)
-                    ? PREFIX + ".MAILBOX.MSG." + mailId + "." + priority.getValue()
-                    : PREFIX + ".MAILBOX.MSG." + mailId + ".*";
+            String base = PREFIX + ".MAILBOX.MSG." + mailId;
+            String sub;
+            if (priority == null) {
+                sub = base + ".*";
+            } else if (priority == Priority.NORMAL) {
+                sub = base;
+            } else {
+                sub = base + "." + priority.getValue();
+            }
 
             Dispatcher dispatcher = nc.createDispatcher((Message msg) -> {
                 com.robustmq.mq9.Message m = parseIncoming(mailId, msg);
@@ -201,11 +208,13 @@ public class MQ9Client implements AutoCloseable {
     }
 
     private com.robustmq.mq9.Message parseIncoming(String mailId, Message raw) {
-        // Extract priority from subject last token
+        // Subject is bare $mq9.AI.MAILBOX.MSG.{mailId} (normal)
+        // or $mq9.AI.MAILBOX.MSG.{mailId}.{urgent|critical}
         String subject = raw.getSubject();
-        String[] parts = subject.split("\\.");
-        String priorityStr = parts.length > 0 ? parts[parts.length - 1] : "normal";
-        Priority priority = Priority.fromString(priorityStr);
+        String base = PREFIX + ".MAILBOX.MSG." + mailId;
+        String suffix = subject.startsWith(base) ? subject.substring(base.length()) : "";
+        String priorityStr = suffix.startsWith(".") ? suffix.substring(1) : "";
+        Priority priority = priorityStr.isEmpty() ? Priority.NORMAL : Priority.fromString(priorityStr);
 
         // Try JSON envelope first
         try {

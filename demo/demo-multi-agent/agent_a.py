@@ -22,9 +22,9 @@ SERVER = "nats://demo.robustmq.com:4222"
 RENDEZVOUS = "demo.multi-agent.rendezvous"
 
 TASKS = [
-    ("Analyze sentiment of Q3 earnings call", Priority.HIGH),
-    ("Summarize the latest research papers", Priority.NORMAL),
-    ("Index new documents in the knowledge base", Priority.LOW),
+    ("Analyze sentiment of Q3 earnings call", Priority.CRITICAL),
+    ("Summarize the latest research papers", Priority.URGENT),
+    ("Index new documents in the knowledge base", Priority.NORMAL),
 ]
 
 
@@ -40,7 +40,7 @@ async def main() -> None:
         await client.send(
             RENDEZVOUS,
             mailbox.mail_id.encode(),
-            priority=Priority.HIGH,
+            priority=Priority.CRITICAL,
         )
         print(f"[agent-a] published reply address to '{RENDEZVOUS}'")
 

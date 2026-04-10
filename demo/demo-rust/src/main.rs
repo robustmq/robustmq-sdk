@@ -18,10 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("[rust] private mailbox: {}", mailbox.mail_id);
 
     // 2. Send 3 messages with different priorities
-    client.send(&mailbox.mail_id, b"urgent task", Priority::High).await?;
+    client.send(&mailbox.mail_id, b"abort signal", Priority::Critical).await?;
+    client.send(&mailbox.mail_id, b"urgent task", Priority::Urgent).await?;
     client.send(&mailbox.mail_id, b"normal task", Priority::Normal).await?;
-    client.send(&mailbox.mail_id, b"background task", Priority::Low).await?;
-    println!("[rust] sent 3 messages (high / normal / low)");
+    println!("[rust] sent 3 messages (critical / urgent / normal)");
 
     // 3. Subscribe and print received messages
     let _sub = client

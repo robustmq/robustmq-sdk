@@ -1,9 +1,9 @@
 package com.robustmq.mq9;
 
 public enum Priority {
-    HIGH("high"),
-    NORMAL("normal"),
-    LOW("low");
+    CRITICAL("critical"),
+    URGENT("urgent"),
+    NORMAL("normal");
 
     private final String value;
 

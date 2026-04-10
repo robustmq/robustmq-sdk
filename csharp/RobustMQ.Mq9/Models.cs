@@ -2,25 +2,24 @@ namespace RobustMQ.Mq9;
 
 public enum Priority
 {
-    High,
-    Normal,
-    Low
+    Critical,
+    Urgent,
+    Normal
 }
 
 internal static class PriorityExtensions
 {
     public static string ToSubjectString(this Priority p) => p switch
     {
-        Priority.High => "high",
-        Priority.Normal => "normal",
-        Priority.Low => "low",
+        Priority.Critical => "critical",
+        Priority.Urgent => "urgent",
         _ => "normal"
     };
 
     public static Priority FromString(string s) => s switch
     {
-        "high" => Priority.High,
-        "low" => Priority.Low,
+        "critical" => Priority.Critical,
+        "urgent" => Priority.Urgent,
         _ => Priority.Normal
     };
 }

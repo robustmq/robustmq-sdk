@@ -52,7 +52,7 @@ async def main() -> None:
     agent_b.invoke(
         {
             "input": (
-                f"Send a high-priority message to mailbox '{mail_id}' "
+                f"Send a critical-priority message to mailbox '{mail_id}' "
                 "with content: 'Task complete: analysis finished successfully.'"
             )
         }

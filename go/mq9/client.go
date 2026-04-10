@@ -22,8 +22,27 @@ const (
 	subjectCreate = prefix + ".MAILBOX.CREATE"
 )
 
-func subjectMsg(mailID, priority string) string {
-	return fmt.Sprintf("%s.MAILBOX.MSG.%s.%s", prefix, mailID, priority)
+func subjectMsgBase(mailID string) string {
+	return fmt.Sprintf("%s.MAILBOX.MSG.%s", prefix, mailID)
+}
+
+// subjectMsg returns the send subject. Normal uses the bare subject; urgent/critical append a suffix.
+func subjectMsg(mailID string, p Priority) string {
+	if p == Normal {
+		return subjectMsgBase(mailID)
+	}
+	return fmt.Sprintf("%s.%s", subjectMsgBase(mailID), string(p))
+}
+
+// subjectSub returns the subscribe subject. "*" uses the wildcard suffix.
+func subjectSub(mailID, priority string) string {
+	if priority == "*" {
+		return subjectMsgBase(mailID) + ".*"
+	}
+	if Priority(priority) == Normal {
+		return subjectMsgBase(mailID)
+	}
+	return fmt.Sprintf("%s.%s", subjectMsgBase(mailID), priority)
 }
 func subjectList(mailID string) string {
 	return fmt.Sprintf("%s.MAILBOX.LIST.%s", prefix, mailID)
@@ -40,9 +59,9 @@ func subjectDelete(mailID, msgID string) string {
 type Priority string
 
 const (
-	High   Priority = "high"
-	Normal Priority = "normal"
-	Low    Priority = "low"
+	Critical Priority = "critical"
+	Urgent   Priority = "urgent"
+	Normal   Priority = "normal"
 )
 
 // Mailbox represents a created mq9 mailbox.
@@ -227,7 +246,7 @@ func (c *MQ9Client) Send(mailID string, payload []byte, priority Priority) error
 	if err := c.ensureConnected(); err != nil {
 		return err
 	}
-	return c.nc.Publish(subjectMsg(mailID, string(priority)), payload)
+	return c.nc.Publish(subjectMsg(mailID, priority), payload)
 }
 
 // ---------------------------------------------------------------------------
@@ -245,7 +264,7 @@ func (c *MQ9Client) Subscribe(mailID string, callback func(*Message), opts ...Su
 	for _, opt := range opts {
 		opt(o)
 	}
-	subject := subjectMsg(mailID, o.priority)
+	subject := subjectSub(mailID, o.priority)
 
 	handler := func(raw *nats.Msg) {
 		msg := parseIncoming(mailID, raw)
@@ -340,12 +359,12 @@ func (c *MQ9Client) request(subject string, payload map[string]any) (map[string]
 }
 
 func parseIncoming(mailID string, raw *nats.Msg) *Message {
-	parts := strings.Split(raw.Subject, ".")
-	priorityStr := "normal"
-	if len(parts) > 0 {
-		priorityStr = parts[len(parts)-1]
-	}
-	priority := toPriority(priorityStr)
+	// Subject is either the bare form $mq9.AI.MAILBOX.MSG.{mailID}
+	// or the suffixed form $mq9.AI.MAILBOX.MSG.{mailID}.{urgent|critical}
+	base := subjectMsgBase(mailID)
+	suffix := strings.TrimPrefix(raw.Subject, base)
+	priorityStr := strings.TrimPrefix(suffix, ".")
+	priority := toPriority(priorityStr) // empty string → Normal
 
 	// Try JSON envelope
 	var node map[string]any
@@ -373,10 +392,10 @@ func parseMessageNode(mailID string, node map[string]any) *Message {
 
 func toPriority(s string) Priority {
 	switch s {
-	case "high":
-		return High
-	case "low":
-		return Low
+	case "critical":
+		return Critical
+	case "urgent":
+		return Urgent
 	default:
 		return Normal
 	}

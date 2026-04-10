@@ -31,7 +31,7 @@ class SendMessageInput(BaseModel):
     content: str = Field(description="The message content to send.")
     priority: str = Field(
         default="normal",
-        description="Message priority: 'high', 'normal', or 'low'.",
+        description="Message priority: 'critical', 'urgent', or 'normal' (default).",
     )
 
 
@@ -114,8 +114,9 @@ class SendMessageTool(BaseTool):
         "Use this tool to send an asynchronous message to another Agent or system "
         "via its mq9 mailbox address (mail_id). "
         "The recipient does not need to be online — messages are stored until TTL expires. "
-        "Use priority='high' for urgent tasks that need immediate attention, "
-        "priority='low' for background work, and priority='normal' (default) for everything else. "
+        "Use priority='critical' for abort signals or emergencies, "
+        "priority='urgent' for time-sensitive interrupts, "
+        "and priority='normal' (default) for routine messages. "
         "Call this when you want to delegate a task, notify another Agent, "
         "or pass data to a downstream system."
     )

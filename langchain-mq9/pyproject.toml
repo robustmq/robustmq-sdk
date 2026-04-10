@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "langchain-mq9"
-version = "0.3.5"
+version = "1.0.1"
 description = "LangChain tools for the mq9 AI-native async Agent mailbox protocol"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 dependencies = [
     "langchain-core>=0.2",
-    "robustmq>=0.3.5",
+    "robustmq>=1.0.1",
 ]
 
 [project.optional-dependencies]

@@ -72,9 +72,9 @@ c.Delete(mailID, msgID string) error
 ## Priority
 
 ```go
-mq9.High    // "high"
-mq9.Normal  // "normal"
-mq9.Low     // "low"
+mq9.Critical  // "critical" — highest
+mq9.Urgent    // "urgent"
+mq9.Normal    // "normal" — default, no suffix
 ```
 
 ## Public mailbox

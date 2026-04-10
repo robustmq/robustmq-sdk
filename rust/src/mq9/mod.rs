@@ -33,8 +33,26 @@ use serde_json::Value;
 const PREFIX: &str = "$mq9.AI";
 const MAILBOX_CREATE: &str = "$mq9.AI.MAILBOX.CREATE";
 
-fn subject_msg(mail_id: &str, priority: &str) -> String {
-    format!("{PREFIX}.MAILBOX.MSG.{mail_id}.{priority}")
+fn subject_msg_base(mail_id: &str) -> String {
+    format!("{PREFIX}.MAILBOX.MSG.{mail_id}")
+}
+
+/// Send subject: normal uses bare (no suffix); urgent/critical append suffix.
+fn subject_msg(mail_id: &str, priority: Priority) -> String {
+    if priority == Priority::Normal {
+        subject_msg_base(mail_id)
+    } else {
+        format!("{}.{}", subject_msg_base(mail_id), priority.as_str())
+    }
+}
+
+/// Subscribe subject: "*" uses wildcard; normal uses bare; others append suffix.
+fn subject_sub(mail_id: &str, priority: &str) -> String {
+    match priority {
+        "*" => format!("{}.*", subject_msg_base(mail_id)),
+        "normal" => subject_msg_base(mail_id),
+        p => format!("{}.{}", subject_msg_base(mail_id), p),
+    }
 }
 
 fn subject_list(mail_id: &str) -> String {
@@ -52,24 +70,24 @@ fn subject_delete(mail_id: &str, msg_id: &str) -> String {
 /// Message priority level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Priority {
-    High,
+    Critical,
+    Urgent,
     Normal,
-    Low,
 }
 
 impl Priority {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Priority::High => "high",
+            Priority::Critical => "critical",
+            Priority::Urgent => "urgent",
             Priority::Normal => "normal",
-            Priority::Low => "low",
         }
     }
 
     pub fn from_str_lossy(s: &str) -> Priority {
         match s {
-            "high" => Priority::High,
-            "low" => Priority::Low,
+            "critical" => Priority::Critical,
+            "urgent" => Priority::Urgent,
             _ => Priority::Normal,
         }
     }
@@ -347,7 +365,7 @@ impl MQ9Client {
         payload: &[u8],
         priority: Priority,
     ) -> Result<(), MQ9Error> {
-        let subject = subject_msg(mail_id, priority.as_str());
+        let subject = subject_msg(mail_id, priority);
         self.transport
             .publish(subject, Bytes::copy_from_slice(payload))
             .await
@@ -373,7 +391,7 @@ impl MQ9Client {
         let priority_str = priority
             .map(|p| p.as_str().to_string())
             .unwrap_or_else(|| "*".to_string());
-        let subject = subject_msg(mail_id, &priority_str);
+        let subject = subject_sub(mail_id, &priority_str);
         let queue = if queue_group.is_empty() {
             None
         } else {
@@ -447,14 +465,13 @@ impl MQ9Client {
 
 /// Parse a message arriving on a subscription subject.
 ///
-/// Subject format: `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}`
+/// Subject is bare `$mq9.AI.MAILBOX.MSG.{mail_id}` (normal)
+/// or `$mq9.AI.MAILBOX.MSG.{mail_id}.{urgent|critical}`.
 fn parse_incoming(mail_id: &str, raw: &RawMsg) -> Message {
-    let priority = raw
-        .subject
-        .rsplit('.')
-        .next()
-        .map(Priority::from_str_lossy)
-        .unwrap_or(Priority::Normal);
+    let base = subject_msg_base(mail_id);
+    let suffix = raw.subject.strip_prefix(&base).unwrap_or("");
+    let priority_str = suffix.strip_prefix('.').unwrap_or("");
+    let priority = Priority::from_str_lossy(priority_str);
 
     // Try JSON envelope first
     if let Ok(envelope) = serde_json::from_slice::<Value>(&raw.payload) {
@@ -1099,15 +1116,15 @@ mod tests {
 
     #[test]
     fn test_priority_as_str() {
-        assert_eq!(Priority::High.as_str(), "high");
+        assert_eq!(Priority::Critical.as_str(), "critical");
+        assert_eq!(Priority::Urgent.as_str(), "urgent");
         assert_eq!(Priority::Normal.as_str(), "normal");
-        assert_eq!(Priority::Low.as_str(), "low");
     }
 
     #[test]
     fn test_priority_from_str_lossy() {
-        assert_eq!(Priority::from_str_lossy("high"), Priority::High);
-        assert_eq!(Priority::from_str_lossy("low"), Priority::Low);
+        assert_eq!(Priority::from_str_lossy("critical"), Priority::Critical);
+        assert_eq!(Priority::from_str_lossy("urgent"), Priority::Urgent);
         assert_eq!(Priority::from_str_lossy("normal"), Priority::Normal);
         assert_eq!(Priority::from_str_lossy("unknown"), Priority::Normal);
         assert_eq!(Priority::from_str_lossy("*"), Priority::Normal);
@@ -1115,9 +1132,9 @@ mod tests {
 
     #[test]
     fn test_priority_display() {
-        assert_eq!(format!("{}", Priority::High), "high");
+        assert_eq!(format!("{}", Priority::Critical), "critical");
+        assert_eq!(format!("{}", Priority::Urgent), "urgent");
         assert_eq!(format!("{}", Priority::Normal), "normal");
-        assert_eq!(format!("{}", Priority::Low), "low");
     }
 
     // ------------------------------------------------------------------
@@ -1153,15 +1170,31 @@ mod tests {
     #[test]
     fn test_subject_msg_normal() {
         assert_eq!(
-            subject_msg("m-001", "normal"),
-            "$mq9.AI.MAILBOX.MSG.m-001.normal"
+            subject_msg("m-001", Priority::Normal),
+            "$mq9.AI.MAILBOX.MSG.m-001"
         );
     }
 
     #[test]
-    fn test_subject_msg_wildcard() {
+    fn test_subject_msg_urgent() {
         assert_eq!(
-            subject_msg("task.queue", "*"),
+            subject_msg("m-001", Priority::Urgent),
+            "$mq9.AI.MAILBOX.MSG.m-001.urgent"
+        );
+    }
+
+    #[test]
+    fn test_subject_msg_critical() {
+        assert_eq!(
+            subject_msg("m-001", Priority::Critical),
+            "$mq9.AI.MAILBOX.MSG.m-001.critical"
+        );
+    }
+
+    #[test]
+    fn test_subject_sub_wildcard() {
+        assert_eq!(
+            subject_sub("task.queue", "*"),
             "$mq9.AI.MAILBOX.MSG.task.queue.*"
         );
     }

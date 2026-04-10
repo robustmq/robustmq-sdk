@@ -27,10 +27,10 @@ public class Demo {
         System.out.println("[java] private mailbox: " + mailbox.getMailId());
 
         // 2. Send 3 messages with different priorities
-        client.send(mailbox.getMailId(), "urgent task".getBytes(), Priority.HIGH).get();
+        client.send(mailbox.getMailId(), "abort signal".getBytes(), Priority.CRITICAL).get();
+        client.send(mailbox.getMailId(), "urgent task".getBytes(), Priority.URGENT).get();
         client.send(mailbox.getMailId(), "normal task".getBytes(), Priority.NORMAL).get();
-        client.send(mailbox.getMailId(), "background task".getBytes(), Priority.LOW).get();
-        System.out.println("[java] sent 3 messages (high / normal / low)");
+        System.out.println("[java] sent 3 messages (critical / urgent / normal)");
 
         // 3. Subscribe and print received messages
         var dispatcher = client.subscribe(mailbox.getMailId(), msg ->

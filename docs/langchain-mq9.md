@@ -92,14 +92,14 @@ Sends a message to any mailbox. The recipient does not need to be online — mq9
 from langchain_mq9 import SendMessageTool
 
 tool = SendMessageTool(server="nats://demo.robustmq.com:4222")
-tool.run({"mail_id": mail_id, "content": "Task complete.", "priority": "high"})
+tool.run({"mail_id": mail_id, "content": "Task complete.", "priority": "critical"})
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `mail_id` | str | — | Target mailbox address |
 | `content` | str | — | Message content |
-| `priority` | str | `"normal"` | `"high"`, `"normal"`, or `"low"` |
+| `priority` | str | `"normal"` | `"critical"`, `"urgent"`, or `"normal"` |
 
 ---
 
@@ -113,7 +113,7 @@ from langchain_mq9 import GetMessagesTool
 tool = GetMessagesTool(server="nats://demo.robustmq.com:4222")
 result = tool.run({"mail_id": mail_id, "limit": 10})
 # → "Found 2 message(s) in mailbox 'm-001':
-#     [1] priority=high  content=Urgent: server down
+#     [1] priority=critical  content=Urgent: server down
 #     [2] priority=normal  content=Daily report ready"
 ```
 
@@ -134,7 +134,7 @@ from langchain_mq9 import ListMessagesTool
 tool = ListMessagesTool(server="nats://demo.robustmq.com:4222")
 result = tool.run({"mail_id": mail_id})
 # → "2 message(s) in mailbox 'm-001':
-#     msg_id=msg-001  priority=high  ts=1234567890
+#     msg_id=msg-001  priority=critical  ts=1234567890
 #     msg_id=msg-002  priority=normal  ts=1234567891"
 ```
 
@@ -192,7 +192,7 @@ async def main():
 
     # Agent B: send messages
     await SendMessageTool(server=SERVER)._arun(
-        mail_id=mail_id, content="Urgent: data pipeline failed", priority="high"
+        mail_id=mail_id, content="Urgent: data pipeline failed", priority="critical"
     )
     await SendMessageTool(server=SERVER)._arun(
         mail_id=mail_id, content="Weekly report attached", priority="normal"

@@ -29,9 +29,9 @@ Each message carries one of three priorities:
 
 | Value | Use |
 |-------|-----|
-| `high` | Urgent (task abort, emergency commands) |
-| `normal` | Regular communication (task distribution, results) |
-| `low` | Background (logging, status reports) |
+| `critical` | Highest priority — abort signals, emergency commands, security events |
+| `urgent` | Urgent — task interrupts, time-sensitive instructions |
+| `normal` (default, no suffix) | Routine communication — task dispatch, result delivery |
 
 - Same-priority messages: FIFO
 - Cross-priority: higher processed first
@@ -97,29 +97,36 @@ For public mailboxes, `mail_id` equals the user-supplied `name`.
 
 ---
 
-### MAILBOX.MSG.{mail_id}.{priority}
+### MAILBOX.MSG.{mail_id} / MAILBOX.MSG.{mail_id}.{priority}
 
-**Subject:** `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}`  
+**Subject (default/normal):** `$mq9.AI.MAILBOX.MSG.{mail_id}` (no suffix)  
+**Subject (urgent/critical):** `$mq9.AI.MAILBOX.MSG.{mail_id}.{priority}`  
 **Direction:** PUB to send; SUB to receive
 
 **Sending a message:**
 
-Publish to the subject where `priority` is one of `high`, `normal`, `low`.
+Publish to the bare subject for `normal` (default), or append `.urgent` / `.critical` for higher priorities.
 
 ```
-PUB $mq9.AI.MAILBOX.MSG.m-uuid-001.normal
+PUB $mq9.AI.MAILBOX.MSG.m-uuid-001
 {"task": "summarize", "doc_id": "abc123"}
+
+PUB $mq9.AI.MAILBOX.MSG.m-uuid-001.urgent
+{"type": "interrupt"}
+
+PUB $mq9.AI.MAILBOX.MSG.m-uuid-001.critical
+{"type": "abort"}
 ```
 
 Payload is arbitrary bytes — the server does not inspect it.
 
 **Receiving messages (subscribe):**
 
-Subscribe with wildcard `*` to receive all priorities, or specify a single priority:
-
 ```
-SUB $mq9.AI.MAILBOX.MSG.m-uuid-001.*        # all priorities
-SUB $mq9.AI.MAILBOX.MSG.m-uuid-001.high     # high only
+SUB $mq9.AI.MAILBOX.MSG.m-uuid-001.*        # all priorities (normal, urgent, critical)
+SUB $mq9.AI.MAILBOX.MSG.m-uuid-001          # normal only (bare subject, no suffix)
+SUB $mq9.AI.MAILBOX.MSG.m-uuid-001.urgent   # urgent only
+SUB $mq9.AI.MAILBOX.MSG.m-uuid-001.critical # critical only
 ```
 
 Subscription behavior:
@@ -154,8 +161,8 @@ This is a metadata view — payloads are **not** included.
 {
   "mail_id": "m-uuid-001",
   "messages": [
-    { "msg_id": "msg-001", "priority": "high", "ts": 1234567890 },
-    { "msg_id": "msg-002", "priority": "normal", "ts": 1234567891 }
+    { "msg_id": "msg-001", "priority": "critical", "ts": 1234567890 },
+    { "msg_id": "msg-002", "priority": "urgent", "ts": 1234567891 }
   ]
 }
 ```
@@ -208,8 +215,8 @@ Agents that need to communicate through a public mailbox agree on the name out-o
 # Subscribe to a known public mailbox
 nats sub '$mq9.AI.MAILBOX.MSG.task.queue.*'
 
-# Send to a known public mailbox
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.normal' 'payload'
+# Send to a known public mailbox (normal/default priority, no suffix)
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue' 'payload'
 ```
 
 Creating a public mailbox:
@@ -284,16 +291,16 @@ nats req '$mq9.AI.MAILBOX.CREATE' '{"ttl":3600,"public":true,"name":"agent-a.inb
 # → {"mail_id":"agent-a.inbox"}
 
 # ── Step 3: Agent A publishes its private mail_id to the public mailbox ───────
-nats pub '$mq9.AI.MAILBOX.MSG.agent-a.inbox.normal' \
+nats pub '$mq9.AI.MAILBOX.MSG.agent-a.inbox' \
   '{"reply_to":"m-550e8400-e29b-41d4-a716-446655440000"}'
 
 # ── Step 4: Agent B subscribes to the public mailbox to discover Agent A ──────
-nats sub '$mq9.AI.MAILBOX.MSG.agent-a.inbox.*'
+nats sub '$mq9.AI.MAILBOX.MSG.agent-a.inbox'
 # ← {"reply_to":"m-550e8400-e29b-41d4-a716-446655440000"}
 # Agent B now knows Agent A's private mail_id.
 
 # ── Step 5: Agent B sends a task result to Agent A's private mailbox ──────────
-nats pub '$mq9.AI.MAILBOX.MSG.m-550e8400-e29b-41d4-a716-446655440000.high' \
+nats pub '$mq9.AI.MAILBOX.MSG.m-550e8400-e29b-41d4-a716-446655440000.critical' \
   '{"status":"done","result":"analysis complete","score":0.97}'
 
 # ── Step 6: Agent A subscribes to its private mailbox and receives the result ─
@@ -303,7 +310,7 @@ nats sub '$mq9.AI.MAILBOX.MSG.m-550e8400-e29b-41d4-a716-446655440000.*'
 # ── Step 7: Agent A deletes the processed message ─────────────────────────────
 # First list to get msg_id:
 nats req '$mq9.AI.MAILBOX.LIST.m-550e8400-e29b-41d4-a716-446655440000' '{}'
-# → {"mail_id":"m-550e...","messages":[{"msg_id":"msg-001","priority":"high","ts":1700000001}]}
+# → {"mail_id":"m-550e...","messages":[{"msg_id":"msg-001","priority":"critical","ts":1700000001}]}
 
 nats req '$mq9.AI.MAILBOX.DELETE.m-550e8400-e29b-41d4-a716-446655440000.msg-001' '{}'
 # → {"deleted":true}
@@ -336,20 +343,20 @@ nats sub '$mq9.AI.MAILBOX.MSG.task.queue.*' --queue workers
 # Each message is delivered to exactly one worker in the "workers" group.
 
 # ── Step 3: Producer sends 5 tasks with mixed priorities ──────────────────────
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.high'   '{"task_id":"t-001","type":"urgent-analysis"}'
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.normal' '{"task_id":"t-002","type":"summarize"}'
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.low'    '{"task_id":"t-003","type":"index"}'
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.high'   '{"task_id":"t-004","type":"alert"}'
-nats pub '$mq9.AI.MAILBOX.MSG.task.queue.normal' '{"task_id":"t-005","type":"report"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.critical' '{"task_id":"t-001","type":"urgent-analysis"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue'          '{"task_id":"t-002","type":"summarize"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.urgent'   '{"task_id":"t-003","type":"interrupt"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue.critical' '{"task_id":"t-004","type":"alert"}'
+nats pub '$mq9.AI.MAILBOX.MSG.task.queue'          '{"task_id":"t-005","type":"report"}'
 
 # ── Step 4: Observe delivery ───────────────────────────────────────────────────
-# High-priority tasks (t-001, t-004) are delivered before normal and low.
+# Critical-priority tasks (t-001, t-004) are delivered before urgent and normal.
 # Each task goes to exactly one worker — no duplicate processing.
 # Workers that start after the producer still receive stored messages immediately.
 
 # Example worker output (distribution will vary):
-# Worker 1 ← t-001 (high), t-003 (low)
-# Worker 2 ← t-004 (high), t-005 (normal)
+# Worker 1 ← t-001 (critical), t-003 (urgent)
+# Worker 2 ← t-004 (critical), t-005 (normal)
 # Worker 3 ← t-002 (normal)
 
 # ── Step 5: Check remaining queue depth ───────────────────────────────────────
@@ -359,6 +366,6 @@ nats req '$mq9.AI.MAILBOX.LIST.task.queue' '{}'
 
 **Key points:**
 - All workers use the same `queue_group` name (`workers`). NATS delivers each message to exactly one member.
-- High-priority messages stored before workers connect are still delivered in priority order on subscribe.
+- Critical and urgent messages stored before workers connect are still delivered in priority order (critical → urgent → normal) on subscribe.
 - Workers can be added or removed at any time — the queue group adjusts automatically.
 - If a worker crashes before deleting its message, the message remains in the mailbox and will be re-delivered when the worker reconnects (store-first semantics).

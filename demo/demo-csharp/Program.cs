@@ -19,10 +19,10 @@ var mailbox = await client.CreateAsync(60);
 Console.WriteLine($"[csharp] private mailbox: {mailbox.MailId}");
 
 // 2. Send 3 messages with different priorities
-await client.SendAsync(mailbox.MailId, "urgent task"u8.ToArray(), Priority.High);
+await client.SendAsync(mailbox.MailId, "abort signal"u8.ToArray(), Priority.Critical);
+await client.SendAsync(mailbox.MailId, "urgent task"u8.ToArray(), Priority.Urgent);
 await client.SendAsync(mailbox.MailId, "normal task"u8.ToArray(), Priority.Normal);
-await client.SendAsync(mailbox.MailId, "background task"u8.ToArray(), Priority.Low);
-Console.WriteLine("[csharp] sent 3 messages (high / normal / low)");
+Console.WriteLine("[csharp] sent 3 messages (critical / urgent / normal)");
 
 // 3. Subscribe and print received messages
 await using var sub = await client.SubscribeAsync(mailbox.MailId, async msg =>

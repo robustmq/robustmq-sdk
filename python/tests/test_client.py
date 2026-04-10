@@ -160,7 +160,8 @@ async def test_send_bytes_normal_priority():
 
     await client.send("m-001", b"hello", priority=Priority.NORMAL)
 
-    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001.normal", b"hello")
+    # normal uses bare subject (no suffix)
+    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001", b"hello")
 
 
 @pytest.mark.asyncio
@@ -179,21 +180,21 @@ async def test_send_dict_payload():
     client = _make_client()
     nc = await _inject_nc(client)
 
-    await client.send("m-001", {"task": "summarize"}, priority="high")
+    await client.send("m-001", {"task": "summarize"}, priority="critical")
 
     subject, data = nc.publish.call_args.args
-    assert subject == "$mq9.AI.MAILBOX.MSG.m-001.high"
+    assert subject == "$mq9.AI.MAILBOX.MSG.m-001.critical"
     assert json.loads(data) == {"task": "summarize"}
 
 
 @pytest.mark.asyncio
-async def test_send_low_priority():
+async def test_send_urgent_priority():
     client = _make_client()
     nc = await _inject_nc(client)
 
-    await client.send("m-001", b"bg", priority=Priority.LOW)
+    await client.send("m-001", b"interrupt", priority=Priority.URGENT)
 
-    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001.low", b"bg")
+    nc.publish.assert_awaited_once_with("$mq9.AI.MAILBOX.MSG.m-001.urgent", b"interrupt")
 
 
 @pytest.mark.asyncio
@@ -202,7 +203,7 @@ async def test_send_invalid_priority():
     await _inject_nc(client)
 
     with pytest.raises(ValueError):
-        await client.send("m-001", b"x", priority="urgent")
+        await client.send("m-001", b"x", priority="extreme")
 
 
 # ---------------------------------------------------------------------------
@@ -226,15 +227,28 @@ async def test_subscribe_all_priorities():
 
 
 @pytest.mark.asyncio
-async def test_subscribe_single_priority():
+async def test_subscribe_single_priority_critical():
     client = _make_client()
     nc = await _inject_nc(client)
     nc.subscribe = AsyncMock(return_value=MagicMock())
 
-    await client.subscribe("m-001", AsyncMock(), priority="high")
+    await client.subscribe("m-001", AsyncMock(), priority="critical")
 
     subject = nc.subscribe.call_args.args[0]
-    assert subject == "$mq9.AI.MAILBOX.MSG.m-001.high"
+    assert subject == "$mq9.AI.MAILBOX.MSG.m-001.critical"
+
+
+@pytest.mark.asyncio
+async def test_subscribe_single_priority_normal():
+    client = _make_client()
+    nc = await _inject_nc(client)
+    nc.subscribe = AsyncMock(return_value=MagicMock())
+
+    await client.subscribe("m-001", AsyncMock(), priority="normal")
+
+    subject = nc.subscribe.call_args.args[0]
+    # normal uses bare subject (no suffix)
+    assert subject == "$mq9.AI.MAILBOX.MSG.m-001"
 
 
 @pytest.mark.asyncio
@@ -272,9 +286,9 @@ async def test_subscribe_callback_invoked():
     await client.subscribe("m-001", handler, priority="normal")
     assert captured_cb is not None
 
-    # Simulate server pushing a raw message
+    # Simulate server pushing a raw message on the bare subject (normal)
     raw = MagicMock()
-    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.normal"
+    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001"
     raw.data = b'{"msg_id":"x1","priority":"normal","payload":"aGVsbG8="}'
 
     await captured_cb(raw)
@@ -298,7 +312,7 @@ async def test_list_messages():
     server_resp = {
         "mail_id": "m-001",
         "messages": [
-            {"msg_id": "msg-1", "priority": "high", "ts": 1000},
+            {"msg_id": "msg-1", "priority": "critical", "ts": 1000},
         ],
     }
     nc.request = AsyncMock(return_value=_make_reply(server_resp))
@@ -307,7 +321,7 @@ async def test_list_messages():
 
     assert len(metas) == 1
     assert metas[0].msg_id == "msg-1"
-    assert metas[0].priority == Priority.HIGH
+    assert metas[0].priority == Priority.CRITICAL
     assert metas[0].ts == 1000
 
     subject = nc.request.call_args.args[0]
@@ -401,32 +415,41 @@ def test_encode_dict():
 # ---------------------------------------------------------------------------
 
 
-def test_parse_incoming_with_envelope():
+def test_parse_incoming_with_envelope_critical():
     raw = MagicMock()
-    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.high"
+    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.critical"
     raw.data = json.dumps(
         {
             "msg_id": "x9",
-            "priority": "high",
+            "priority": "critical",
             "payload": base64.b64encode(b"data").decode(),
         }
     ).encode()
 
     msg = _parse_incoming("m-001", raw)
     assert msg.msg_id == "x9"
-    assert msg.priority == Priority.HIGH
+    assert msg.priority == Priority.CRITICAL
     assert msg.payload == b"data"
 
 
-def test_parse_incoming_raw_bytes():
+def test_parse_incoming_normal_bare_subject():
     raw = MagicMock()
-    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.low"
+    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001"
     raw.data = b"plain bytes"
 
     msg = _parse_incoming("m-001", raw)
     assert msg.payload == b"plain bytes"
-    assert msg.priority == Priority.LOW
+    assert msg.priority == Priority.NORMAL
     assert msg.msg_id == ""
+
+
+def test_parse_incoming_urgent():
+    raw = MagicMock()
+    raw.subject = "$mq9.AI.MAILBOX.MSG.m-001.urgent"
+    raw.data = b"interrupt"
+
+    msg = _parse_incoming("m-001", raw)
+    assert msg.priority == Priority.URGENT
 
 
 def test_parse_incoming_unknown_priority():

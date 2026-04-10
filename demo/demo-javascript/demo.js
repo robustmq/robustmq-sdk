@@ -20,10 +20,10 @@ async function main() {
   console.log(`[js] private mailbox: ${mailbox.mailId}`);
 
   // 2. Send 3 messages with different priorities
-  await client.send(mailbox.mailId, "urgent task", "high");
+  await client.send(mailbox.mailId, "abort signal", "critical");
+  await client.send(mailbox.mailId, "urgent task", "urgent");
   await client.send(mailbox.mailId, "normal task", "normal");
-  await client.send(mailbox.mailId, "background task", "low");
-  console.log("[js] sent 3 messages (high / normal / low)");
+  console.log("[js] sent 3 messages (critical / urgent / normal)");
 
   // 3. Subscribe and print received messages
   const sub = await client.subscribe(mailbox.mailId, async (msg) => {
