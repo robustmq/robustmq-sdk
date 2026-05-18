@@ -21,7 +21,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -82,7 +82,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: actions/setup-python@v5
@@ -104,7 +104,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
@@ -121,7 +121,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ needs.prepare.outputs.tag }}
@@ -139,7 +139,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: actions/setup-node@v6
@@ -165,7 +165,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: needs.prepare.result == 'success'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: actions/setup-java@v4
@@ -190,7 +190,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: actions/setup-python@v5
@@ -212,7 +212,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.tag }}
       - uses: actions/setup-dotnet@v4
